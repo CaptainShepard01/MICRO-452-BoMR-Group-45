@@ -1,15 +1,18 @@
 import numpy as np
+import time
 
 POS_VAR = 0.321724 # mm^2
 VEL_VAR = 16.08621 # mm^2 /s^2
 THETA_VAR = 0.105616 # deg^2 (3.2172e-5 rad^2)
 #kidnap = False
-#kn_dist = ??
-#kn_theta = ??
+KN_DIST = 10 # arbitrary
+KN_THETA = 10 # arbitrary
    
 class KalmanFilterExtended:
     
-    def __init__(self, initial_pos, u=np.array([0, 0])):  
+    def __init__(self, initial_pos, u): 
+        self.cur_t = 0
+        self.count_time(time.time())
         self.x = np.zeros(5)
         self.x[3:] = u
         self.x[:3] = initial_pos
@@ -23,18 +26,19 @@ class KalmanFilterExtended:
         self.R_nocam = np.diag([VEL_VAR, VEL_VAR])
         self.P = 8*np.diag([POS_VAR, POS_VAR, THETA_VAR, VEL_VAR, VEL_VAR])
 
-        self.fig, self.ax = plt.subplots()
-        self.ellipse = None
-        self.path_line, = self.ax.plot([], [], 'b-', label="Path")
-        self.smooth_path_line, = self.ax.plot([], [], 'g--', label="Smooth Path")
+        # self.fig, self.ax = plt.subplots()
+        # self.ellipse = None
+        # self.path_line, = self.ax.plot([], [], 'b-', label="Path")
+        # self.smooth_path_line, = self.ax.plot([], [], 'g--', label="Smooth Path")
         
-        self.robot_positions = []
+        # self.robot_positions = []
         
     def compute_fnF(self, dt):
-        pos_x, pos_y, theta = self.x[0], self.x[1], self.x[2]
-        left_wheel_speed, right_wheel_speed = self.x[3], self.x[4]
+        # pos_x, pos_y, theta = self.x[0], self.x[1], self.x[2]
+        # left_wheel_speed, right_wheel_speed = self.x[3], self.x[4]
+        theta = self.x[2]
         avg_v = (self.x[3] + self.x[4]) / 2
-        wheel_base = 10 # cm 
+        wheel_base = 100 # mm 
         omega = (self.x[3] - self.x[4]) / wheel_base
         vf = avg_v * omega
         coS = np.cos(theta)
@@ -55,7 +59,7 @@ class KalmanFilterExtended:
             [0, 0, 0, 0, 1]])
         
         return f, F
-        
+    
     def prediction(self, dt):
         f, F = self.compute_fnF(dt)
         self.x = f @ self.x
@@ -94,3 +98,9 @@ class KalmanFilterExtended:
 
     def get_cov(self):
         return self.P
+    
+    def count_time(self, cur_t):
+        self.cur_t = cur_t
+        
+    def previous_time(self):
+        return self.cur_t
