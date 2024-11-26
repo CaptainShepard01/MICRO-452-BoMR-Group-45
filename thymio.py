@@ -33,10 +33,15 @@ class Thymio():
     BETA_COEFF = 1
     WHEELBASE = 0.09
 
+    ONETURN = 16 # ms for a full turn
+    ANGLE_THRESHOLD = 0.01
+
     def __init__(self):
         self.client = ClientAsync()
         self.node = aw(self.client.wait_for_node())
         aw(self.node.lock())
+
+        self.RAD_TURN = self.ONETURN / (2 * np.pi)
 
     def __del__(self):
         aw(self.node.unlock())
@@ -168,4 +173,13 @@ class Thymio():
         path = target - self.position
         angle = np.arctan2(path[0], path[1]) - self.orientation
 
+        time_to_turn = abs(angle) * self.ONETURN / (2 * np.pi)
 
+        if angle > self.ANGLE_THRESHOLD:
+            self.set_motors(self.SPEED, -self.SPEED)
+            time.sleep(time_to_turn)
+        elif angle < -self.ANGLE_THRESHOLD:
+            self.set_motors(-self.SPEED, self.SPEED)
+            time.sleep(time_to_turn)
+
+        self.set_motors(self.SPEED, self.SPEED)
