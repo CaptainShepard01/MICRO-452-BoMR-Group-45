@@ -2,6 +2,7 @@ import numpy as np
 import time
 from ExtendedKF import KalmanFilterExtended
 import ExtendedKF
+import constants as const
 import matplotlib.pyplot as plt
 from matplotlib.patches import Ellipse
 
@@ -41,19 +42,19 @@ def run_EKF(ekf, pos_x, pos_y, theta, u, dt = None, cam = True, ax = None):
     ekf.prediction(dt)
     measured_state = ekf.get_state()
     
-    if cam:
-        pos_prev = np.array([measured_state[0], measured_state[1]]), 
-        angle_prev = measured_state[2]
-        dpos = abs(np.array([pos_x, pos_y]) - pos_prev)
-        #dpos = np.linalg.norm(np.array([pos_x, pos_y]) - pos_prev)  #Euclidean distance
-        dtheta = abs(theta - angle_prev)
+    # if cam:
+    #     pos_prev = np.array([measured_state[0], measured_state[1]]), 
+    #     angle_prev = measured_state[2]
+    #     dpos = abs(np.array([pos_x, pos_y]) - pos_prev)
+    #     #dpos = np.linalg.norm(np.array([pos_x, pos_y]) - pos_prev)  #Euclidean distance
+    #     dtheta = abs(theta - angle_prev)
         
-        if dpos > const.KN_DIST or dtheta > const.KN_THETA:
-            kidnap = True
-            print('... Thymio is being kidnapped ...')
-            cur_t = time.time()
-            ekf.count_time(cur_t)
-            ekf.get_state()
+    #     # if dpos > const.KN_DIST or dtheta > const.KN_THETA:
+    #     #     kidnap = True
+    #     #     print('... Thymio is being kidnapped ...')
+    #     #     cur_t = time.time()
+    #     #     ekf.count_time(cur_t)
+    #     #     ekf.get_state()
       
     ekf.update(measured_state, cam,  0.1) 
     measurement_update = ekf.get_state()
