@@ -28,10 +28,9 @@ def confidence_ellipse(P, measured_state, ax):
     
     
 # might also have to add kidnapping mode (i.e. kidnap = True)
-def run_EKF(pos_x, pos_y, theta, left_wheel_speed, right_wheel_speed, dt = None, cam = True, ax = None): 
+def run_EKF(pos_x, pos_y, theta, u, dt = None, cam = True, ax = None): 
     kidnap = False
     initial_pos = np.array([pos_x, pos_y, theta])
-    u = np.array([left_wheel_speed, right_wheel_speed])
     ekf = KalmanFilterExtended(initial_pos, u)
 
     if dt is None:
@@ -43,14 +42,14 @@ def run_EKF(pos_x, pos_y, theta, left_wheel_speed, right_wheel_speed, dt = None,
     ekf.prediction(dt)
     measured_state = ekf.get_state()
     
-    if cam = True:
+    if cam:
         pos_prev = np.array([measured_state[0], measured_state[1]]), 
         angle_prev = measured_state[2]
         dpos = abs(np.array([pos_x, pos_y]) - pos_prev)
         #dpos = np.linalg.norm(np.array([pos_x, pos_y]) - pos_prev)  #Euclidean distance
         dtheta = abs(theta - angle_prev)
         
-        if dpos > ExtendedKF.KN_DIST or dtheta > ExtendedKF.KN_THETA:
+        if dpos > const.KN_DIST or dtheta > const.KN_THETA:
             kidnap = True
             print('... Thymio is being kidnapped ...')
             cur_t = time.time()
