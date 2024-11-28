@@ -1,4 +1,5 @@
 import numpy as np
+from matplotlib import pyplot as plt
 from tdmclient import ClientAsync, aw
 import time
 
@@ -30,7 +31,7 @@ class Thymio():
 
     K_RHO = 5
     K_ALPHA = 500
-    K_BETA = -500
+    K_BETA = -0.001
     WHEELBASE = 0.09
 
     ONETURN = 16 # ms for a full turn
@@ -184,13 +185,19 @@ class Thymio():
 
         self.set_motors(self.SPEED, self.SPEED)
 
-    def move_to_point_astolfi(self, target: np.ndarray):
+    def move_to_point_astolfi(self, target: np.ndarray, verbose: bool = False):
         """
         Move the Thymio towards the goal depending on the position and the next target
         :param target: next target position
         """
         d = target - self.position
         rho = np.sqrt(np.sum(np.square(d)))
+        if verbose:
+            print("Orientation: ", self.orientation)
+            print("Rho: ", rho)
+            print("Dy: ", d[1])
+            print("Dx: ", d[0])
+
         alpha = -self.orientation + np.arctan2(d[1], d[0])
         beta = -self.orientation - alpha
 
@@ -200,4 +207,24 @@ class Thymio():
         left_motor = v - w
         right_motor = v + w
 
+        if verbose:
+            print("Left motor: ", left_motor)
+            print("Right motor: ", right_motor)
+
         self.set_motors(int(np.floor(left_motor)), int(np.floor(right_motor)))
+
+    def plot_direction(self, goal):
+        """
+        Plot the direction of the Thymio
+        """
+        plt.plot(self.position[0], self.position[1], 'ro', label='Thymio')
+        plt.plot(goal[0], goal[1], 'bo', label='Goal')
+        plt.quiver(self.position[0], self.position[1], np.cos(self.orientation), np.sin(self.orientation), minshaft=2, color='r', label='Orientation')
+        plt.quiver(self.position[0], self.position[1], goal[0] - self.position[0], goal[1] - self.position[1], minshaft=2, color='b', label='Direction')
+        max_x = max(abs(self.position[0]), abs(goal[0])) + 0.5
+        max_y = max(abs(self.position[1]), abs(goal[1])) + 0.5
+        plt.xlim(-max_x, max_x)
+        plt.ylim(-max_y, max_y)
+        plt.legend()
+        plt.grid()
+        plt.show()
