@@ -122,7 +122,7 @@ class Thymio():
         if verbose:
             print("\t\t Wheel speeds : ", left_speed, right_speed)
 
-        return np.array([left_speed, right_speed])
+        return np.array([left_speed[0], right_speed[0]])
 
     def local_navigation(self):
         """
