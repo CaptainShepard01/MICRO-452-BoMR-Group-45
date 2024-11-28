@@ -1,6 +1,8 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
+ALLOW_DIAG = True
+
 global_map = [['.','.','.','.','.','.','.','.','.','.','.','.','.','.','.','.'],
               ['.','.','.','.','.','.','.','.','.','.','.','.','.','.','.','.'],
               ['.','.','.','.','.','.','.','.','.','.','.','.','.','.','.','.'],
@@ -40,6 +42,16 @@ def get_neighbours_index(grid_map, cell):
         neighbours.append([x,y+1])
     if x > 0:
         neighbours.append([x-1,y])
+
+    if ALLOW_DIAG:
+        if y > 0 and x > 0:
+            neighbours.append([x-1,y-1])
+        if y > 0 and x < len(grid_map[0]) - 1:
+            neighbours.append([x+1,y-1])
+        if y < len(grid_map) - 1 and x < len(grid_map[0]) - 1:
+            neighbours.append([x+1,y+1])
+        if y < len(grid_map) - 1 and x > 0:
+            neighbours.append([x-1,y+1])
 
     return neighbours
 
