@@ -27,10 +27,10 @@ class Thymio():
     position = None
     orientation = None
     is_on_goal = False
-    RHO_THRESHOLD = 0.01
-    RHO_COEFF = 2
-    ALPHA_COEFF = 1
-    BETA_COEFF = 1
+
+    K_RHO = 5
+    K_ALPHA = 500
+    K_BETA = -500
     WHEELBASE = 0.09
 
     ONETURN = 16 # ms for a full turn
@@ -183,3 +183,21 @@ class Thymio():
             time.sleep(time_to_turn)
 
         self.set_motors(self.SPEED, self.SPEED)
+
+    def move_to_point_astolfi(self, target: np.ndarray):
+        """
+        Move the Thymio towards the goal depending on the position and the next target
+        :param target: next target position
+        """
+        d = target - self.position
+        rho = np.sqrt(np.sum(np.square(d)))
+        alpha = -self.orientation + np.arctan2(d[1], d[0])
+        beta = -self.orientation - alpha
+
+        v = self.K_RHO * rho
+        w = self.WHEELBASE / 2 * (self.K_ALPHA * alpha + self.K_BETA * beta)
+
+        left_motor = v - w
+        right_motor = v + w
+
+        self.set_motors(int(np.floor(left_motor)), int(np.floor(right_motor)))
