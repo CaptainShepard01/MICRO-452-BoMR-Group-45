@@ -26,12 +26,11 @@ def confidence_ellipse(P, measured_state, ax):
     
     plt.pause(0.01)
     
-    
+
 # might also have to add kidnapping mode (i.e. kidnap = True)
-def run_EKF(pos_x, pos_y, theta, u, dt = None, cam = True, ax = None): 
+def run_EKF(ekf, pos_x, pos_y, theta, u, dt = None, cam = True, ax = None): 
     kidnap = False
     initial_pos = np.array([pos_x, pos_y, theta])
-    ekf = KalmanFilterExtended(initial_pos, u)
 
     if dt is None:
         cur_t = time.time()
