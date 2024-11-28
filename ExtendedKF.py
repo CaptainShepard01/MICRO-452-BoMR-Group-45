@@ -1,12 +1,8 @@
 import numpy as np
 import time
-
-POS_VAR = 0.321724 # mm^2
-VEL_VAR = 16.08621 # mm^2 /s^2
-THETA_VAR = 0.105616 # deg^2 (3.2172e-5 rad^2)
-#kidnap = False
-KN_DIST = 10 # arbitrary
-KN_THETA = 10 # arbitrary
+import constants as const
+import matplotlib.pyplot as plt
+from matplotlib.patches import Ellipse
    
 class KalmanFilterExtended:
     
@@ -21,17 +17,10 @@ class KalmanFilterExtended:
         self.H_nocam = np.array([[0, 0, 0, 1, 0],
                                  [0, 0, 0, 0, 1]])
 
-        self.Q = 8*np.diag([POS_VAR, POS_VAR, THETA_VAR, VEL_VAR, VEL_VAR])
-        self.R_cam = np.diag([POS_VAR, POS_VAR, THETA_VAR, VEL_VAR, VEL_VAR])
-        self.R_nocam = np.diag([VEL_VAR, VEL_VAR])
-        self.P = 8*np.diag([POS_VAR, POS_VAR, THETA_VAR, VEL_VAR, VEL_VAR])
-
-        # self.fig, self.ax = plt.subplots()
-        # self.ellipse = None
-        # self.path_line, = self.ax.plot([], [], 'b-', label="Path")
-        # self.smooth_path_line, = self.ax.plot([], [], 'g--', label="Smooth Path")
-        
-        # self.robot_positions = []
+        self.Q = 8*np.diag([const.POS_VAR, const.POS_VAR, const.THETA_VAR, const.VEL_VAR, const.VEL_VAR])
+        self.R_cam = np.diag([const.POS_VAR, const.POS_VAR, const.THETA_VAR, const.VEL_VAR, const.VEL_VAR])
+        self.R_nocam = np.diag([const.VEL_VAR, const.VEL_VAR])
+        self.P = 8*np.diag([const.POS_VAR, const.POS_VAR, const.THETA_VAR, const.VEL_VAR, const.VEL_VAR])
         
     def compute_fnF(self, dt):
         # pos_x, pos_y, theta = self.x[0], self.x[1], self.x[2]
@@ -91,7 +80,6 @@ class KalmanFilterExtended:
             self.P += update
         # Ensure covariance matrix symmetry and numerical stability
         self.P = 0.5 * (self.P + self.P.T) + np.eye(self.P.shape[0]) * 1e-6
-
 
     def get_state(self):
         return self.x
