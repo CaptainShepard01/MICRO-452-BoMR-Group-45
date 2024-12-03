@@ -118,7 +118,7 @@ if __name__ == "__main__":
         frame_masked = vision.apply_color_mask(frame, mask_color='r')   # We apply a red mask to detect only red obstacles
         edges = vision.detect_edges(frame_masked)                       # We detect the edges on the masked frame using Canny
         corners = vision.get_corners_and_shape_edges(edges)             # We obtain shapes and corners by approxPolyDP
-        corners_mm = list(1/conversion_factor * np.array(vision.get_corners_and_shape_edges(edges)))
+        corners_mm = [np.array(shape) * 1/conversion_factor for shape in corners]
 
         frame_with_vectors, markers_data, marker_ids = get_frame_with_vectors(vision, frame)
         frame_aruco_and_corners = frame_with_vectors.copy()
