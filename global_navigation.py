@@ -7,12 +7,12 @@ THYMIO_RADIUS = 1
 
 # Navigation class
 class Navigation:
-    def __init__(self):
-        self.obstacles = []
-        self.obstacles_count = 0
+    def __init__(self, obstacles, robot, goal):
+        self.obstacles = obstacles
+        self.obstacles_count = len(obstacles)
         self.extended_obstacles = []
-        self.source = []
-        self.goal = []
+        self.source = robot
+        self.goal = goal
         self.path = []
 
     def set_obstacles_source_goal(self, obstacles, robot, goal):
@@ -54,8 +54,6 @@ class Navigation:
 
             self.extended_obstacles.append(extended_polygon)
 
-        print(self.extended_obstacles)
-
 
     def get_shortest_path(self):
         """
@@ -64,6 +62,8 @@ class Navigation:
         :returns:
             A list of the coordinates of each node from robot position to goal.
         """
+        self.augment_obtacles()
+
         graph = vg.VisGraph()
         polygons = []
         for obstacle in self.extended_obstacles:
@@ -80,6 +80,7 @@ class Navigation:
             self.path.append(point)
 
         return self.path
+
 
 # obstacles = [[[0,1],[3,1],[1.5,4]],
 #              [[4,4],[7,4],[5.5,8]]]

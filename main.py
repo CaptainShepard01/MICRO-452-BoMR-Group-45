@@ -4,6 +4,7 @@ import numpy as np
 from thymio import Thymio
 from ComputerVision import ComputerVision
 from ExtendedKF import KalmanFilterExtended
+from global_navigation import Navigation
 
 
 def get_frame_with_vectors(vision, frame):
@@ -27,6 +28,14 @@ def get_thymio_localisation(markers_data):
 
     return thymio_pos_x, thymio_pos_y, thymio_theta
 
+def get_goal_position(markers_data):
+    for marker in markers_data:
+        if marker[0] == vision.ARUCO_GOAL_ID:
+            goal_pos = [marker[1], marker[2]]
+            break
+
+    return goal_pos
+
 
 if __name__ == "__main__":
     vision = ComputerVision(1)
@@ -43,9 +52,11 @@ if __name__ == "__main__":
     frame_masked = vision.apply_color_mask(frame, mask_color='r')  # We apply a red mask to detect only red obstacles
     edges = vision.detect_edges(frame_masked)  # We detect the edges on the masked frame using Canny
     corners = vision.get_corners_and_shape_edges(edges)  # We obtain shapes and corners by approxPolyDP
+    goal_pos = get_goal_position(markers_data)
 
     # Global path planning
-
+    navigation = Navigation(corners, [thymio_pos_x, thymio_pos_y], goal_pos)
+    global_path = navigation.get_shortest_path()
 
     # create and initialize the Thymio
     thymio = Thymio()
