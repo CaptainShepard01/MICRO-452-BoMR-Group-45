@@ -3,14 +3,10 @@ import numpy as np
 import matplotlib.pyplot as plt
 import pyvisgraph as vg
 
-THYMIO_RADIUS = 1
+THYMIO_RADIUS = 140 # mm
 
 # Navigation class
 class Navigation:
-    # Inputs
-    # - obstacles: A list of all the obstacles. An obstacle is a list of vertices, ordered CCW.
-    # - robot: The position of the robot.
-    # - goal: The position of the goal.
     def __init__(self, obstacles, robot, goal):
         self.obstacles = obstacles
         self.obstacles_count = len(obstacles)
@@ -19,8 +15,24 @@ class Navigation:
         self.goal = goal
         self.path = []
 
-    # Augments the countout of the obstacles w.r.t. the radius of the robot.
+    def set_obstacles_source_goal(self, obstacles, robot, goal):
+        """
+        :param obstacles:  A list of all the obstacles on the map. An obstacle is a list of 
+                            vertices, ordered CCW.
+        :param robot:      The position of the robot.
+        :param goal:       The position of the goal.
+        """
+        self.obstacles = obstacles
+        self.obstacles_count = len(obstacles)
+        self.source = robot
+        self.goal = goal
+
+
+    @staticmethod
     def augment_obtacles(self):
+        """
+        Augments the countour of the obstacles w.r.t. the radius of the robot.
+        """
         for polygon in self.obstacles:
             print(polygon)
             extended_polygon = []
@@ -42,10 +54,16 @@ class Navigation:
 
             self.extended_obstacles.append(extended_polygon)
 
-        print(self.extended_obstacles)
 
-    # Searches the shortest path from source (robot) to goal around the obstacles.
     def get_shortest_path(self):
+        """
+        Computes the shortest path from source (robot) to goal, while avoiding the obstacles.
+
+        :returns:
+            A list of the coordinates of each node from robot position to goal.
+        """
+        self.augment_obtacles()
+
         graph = vg.VisGraph()
         polygons = []
         for obstacle in self.extended_obstacles:
@@ -62,6 +80,7 @@ class Navigation:
             self.path.append(point)
 
         return self.path
+
 
 # obstacles = [[[0,1],[3,1],[1.5,4]],
 #              [[4,4],[7,4],[5.5,8]]]
