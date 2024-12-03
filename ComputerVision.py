@@ -5,9 +5,10 @@ import math
 
 
 class ComputerVision:
-    def __init__(self, camera_index=1, aruco_marker_side_length=45e-3, robot_id=4):
+    def __init__(self, camera_index=1, aruco_marker_side_length=45e-3, robot_id=4, goal_id=8):
         self.ARUCO_MARKER_SIDE_LENGTH = aruco_marker_side_length
         self.ARUCO_ROBOT_ID = robot_id
+        self.ARUCO_GOAL_ID = goal_id
 
         # Initialize camera parameters
         self.mtx, self.dst = self.initialize_camera_parameters()
