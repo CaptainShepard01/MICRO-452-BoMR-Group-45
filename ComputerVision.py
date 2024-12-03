@@ -182,7 +182,7 @@ class ComputerVision:
                 self.dst)
             return frame_with_markers, marker_ids, rvecs, tvecs, aruco_side_pixels
 
-        return None, None, None, None, 0
+        return None, None, None, None, 1
 
 
 
