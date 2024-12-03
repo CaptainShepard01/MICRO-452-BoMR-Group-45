@@ -80,7 +80,7 @@ if __name__ == "__main__":
                                                mask_color='r')  # We apply a red mask to detect only red obstacles
         edges = vision.detect_edges(frame_masked)  # We detect the edges on the masked frame using Canny
         corners = vision.get_corners_and_shape_edges(edges)  # We obtain shapes and corners by approxPolyDP
-        corners_mm = list(1/conversion_factor * np.array(vision.get_corners_and_shape_edges(edges)))
+        corners_mm = [np.array(shape) * 1/conversion_factor for shape in corners]
 
         ret, frame = vision.cam.read()
 
