@@ -20,6 +20,7 @@ class Thymio():
     LEDS_PROX_H = "leds.prox.h"
     LEDS_PROX_V = "leds.prox.v"
 
+    GOAL_THRESHOLD = 0.1
     OBSTACLE_THRESHOLD = 1000
     SCALE = 0.01
     SPEED = 50
@@ -29,8 +30,8 @@ class Thymio():
     orientation = None
     is_on_goal = False
 
-    K_RHO = 5
-    K_ALPHA = 500
+    K_RHO = 1
+    K_ALPHA = 50
     K_BETA = -0.001
     WHEELBASE = 0.09
 
@@ -54,7 +55,6 @@ class Thymio():
         :param leds: list of LED values
         :param led_type: type of LEDs to set
         """
-
         aw(self.node.set_variables({
             led_type: leds
         }))
@@ -84,6 +84,7 @@ class Thymio():
         if verbose:
             print("\t\t Setting speed : ", left_motor, right_motor)
 
+        # aw(self.client.wait_for_status(self.client.NODE_STATUS_READY))
         aw(self.node.set_variables({
             self.MOTOR_LEFT: [left_motor],
             self.MOTOR_RIGHT: [right_motor]
@@ -159,7 +160,7 @@ class Thymio():
         """
         self.position = position
 
-    def set_orientation(self, orientation: np.ndarray):
+    def set_orientation(self, orientation):
         """
         Sets the orientation of the Thymio
         :param orientation: orientation of the Thymio
@@ -192,6 +193,11 @@ class Thymio():
         """
         d = target - self.position
         rho = np.sqrt(np.sum(np.square(d)))
+
+        if rho <= self.GOAL_THRESHOLD:
+            self.is_on_goal = True
+            return
+
         if verbose:
             print("Orientation: ", self.orientation)
             print("Rho: ", rho)
@@ -211,7 +217,7 @@ class Thymio():
             print("Left motor: ", left_motor)
             print("Right motor: ", right_motor)
 
-        self.set_motors(int(np.floor(left_motor)), int(np.floor(right_motor)))
+        self.set_motors(int(np.floor(left_motor * 0.4)), int(np.floor(right_motor * 0.4)))
 
     def plot_direction(self, goal):
         """
