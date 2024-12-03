@@ -13,7 +13,7 @@ from global_navigation import Navigation
 
 
 def get_frame_with_vectors(vision, frame):
-    frame_with_markers, marker_ids, rvecs, tvecs = vision.detect_and_estimate_pose(frame)
+    frame_with_markers, marker_ids, rvecs, tvecs, aruco_side_pixels = vision.detect_and_estimate_pose(frame)
 
     # Will contain ID, x, y, angle of each detected marker
     markers_data = []
@@ -22,8 +22,11 @@ def get_frame_with_vectors(vision, frame):
         frame_with_vectors, markers_data = vision.process_marker_pose(frame_with_markers, marker_ids, rvecs, tvecs)
     else:
         frame_with_vectors = frame.copy()
+    
+    # Conversion from pixels to mm
+    conversion_factor = aruco_side_pixels/45
 
-    return frame_with_vectors, markers_data, marker_ids
+    return frame_with_vectors, markers_data, marker_ids, conversion_factor
 
 def get_thymio_localisation(markers_data):
     thymio_pos_x, thymio_pos_y, thymio_theta = None, None, None
@@ -77,6 +80,7 @@ if __name__ == "__main__":
                                                mask_color='r')  # We apply a red mask to detect only red obstacles
         edges = vision.detect_edges(frame_masked)  # We detect the edges on the masked frame using Canny
         corners = vision.get_corners_and_shape_edges(edges)  # We obtain shapes and corners by approxPolyDP
+        corners_mm = list(1/conversion_factor * np.array(vision.get_corners_and_shape_edges(edges)))
 
         ret, frame = vision.cam.read()
 
@@ -114,6 +118,7 @@ if __name__ == "__main__":
         frame_masked = vision.apply_color_mask(frame, mask_color='r')   # We apply a red mask to detect only red obstacles
         edges = vision.detect_edges(frame_masked)                       # We detect the edges on the masked frame using Canny
         corners = vision.get_corners_and_shape_edges(edges)             # We obtain shapes and corners by approxPolyDP
+        corners_mm = list(1/conversion_factor * np.array(vision.get_corners_and_shape_edges(edges)))
 
         frame_with_vectors, markers_data, marker_ids = get_frame_with_vectors(vision, frame)
         frame_aruco_and_corners = frame_with_vectors.copy()
