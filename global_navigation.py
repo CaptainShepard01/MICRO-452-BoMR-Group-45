@@ -3,7 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import pyvisgraph as vg
 
-THYMIO_RADIUS = 1
+THYMIO_RADIUS = 140 # mm
 
 # Navigation class
 class Navigation:
