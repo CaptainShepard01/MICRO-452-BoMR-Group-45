@@ -7,20 +7,32 @@ THYMIO_RADIUS = 1
 
 # Navigation class
 class Navigation:
-    # Inputs
-    # - obstacles: A list of all the obstacles. An obstacle is a list of vertices, ordered CCW.
-    # - robot: The position of the robot.
-    # - goal: The position of the goal.
-    def __init__(self, obstacles, robot, goal):
-        self.obstacles = obstacles
-        self.obstacles_count = len(obstacles)
+    def __init__(self):
+        self.obstacles = []
+        self.obstacles_count = 0
         self.extended_obstacles = []
-        self.source = robot
-        self.goal = goal
+        self.source = []
+        self.goal = []
         self.path = []
 
-    # Augments the countout of the obstacles w.r.t. the radius of the robot.
+    def set_obstacles_source_goal(self, obstacles, robot, goal):
+        """
+        :param obstacles:  A list of all the obstacles on the map. An obstacle is a list of 
+                            vertices, ordered CCW.
+        :param robot:      The position of the robot.
+        :param goal:       The position of the goal.
+        """
+        self.obstacles = obstacles
+        self.obstacles_count = len(obstacles)
+        self.source = robot
+        self.goal = goal
+
+
+    @staticmethod
     def augment_obtacles(self):
+        """
+        Augments the countour of the obstacles w.r.t. the radius of the robot.
+        """
         for polygon in self.obstacles:
             print(polygon)
             extended_polygon = []
@@ -44,8 +56,14 @@ class Navigation:
 
         print(self.extended_obstacles)
 
-    # Searches the shortest path from source (robot) to goal around the obstacles.
+
     def get_shortest_path(self):
+        """
+        Computes the shortest path from source (robot) to goal, while avoiding the obstacles.
+
+        :returns:
+            A list of the coordinates of each node from robot position to goal.
+        """
         graph = vg.VisGraph()
         polygons = []
         for obstacle in self.extended_obstacles:
