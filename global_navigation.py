@@ -3,7 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import pyvisgraph as vg
 
-THYMIO_RADIUS = 140 # mm
+THYMIO_RADIUS = 75 # mm
 
 # Navigation class
 class Navigation:
@@ -34,7 +34,6 @@ class Navigation:
         Augments the countour of the obstacles w.r.t. the radius of the robot.
         """
         for polygon in self.obstacles:
-            print(polygon)
             extended_polygon = []
 
             count = len(polygon)
@@ -49,8 +48,12 @@ class Navigation:
                 dir1 = edge1 / np.linalg.norm(edge1)
                 dir2 = -edge2 / np.linalg.norm(edge2)
 
-                extended_polygon.append(vertex + THYMIO_RADIUS * dir2)
-                extended_polygon.append(vertex + THYMIO_RADIUS * dir1)
+                v1 = vertex + THYMIO_RADIUS * dir2
+                v2 = vertex + THYMIO_RADIUS * dir1
+
+                extended_polygon.append(0.5 * np.add(v1,v2))
+                # extended_polygon.append(vertex + THYMIO_RADIUS * dir1)
+                # extended_polygon.append(vertex + THYMIO_RADIUS * dir2)
 
             self.extended_obstacles.append(extended_polygon)
 
@@ -62,7 +65,7 @@ class Navigation:
         :returns:
             A list of the coordinates of each node from robot position to goal.
         """
-        self.augment_obtacles()
+        self.augment_obtacles(self)
 
         graph = vg.VisGraph()
         polygons = []
@@ -78,13 +81,54 @@ class Navigation:
 
         for point in path:
             self.path.append(point)
+            print(point)
 
         return self.path
+    
+    
+    def get_extended_obstacles(self):
+        return self.extended_obstacles
 
 
-# obstacles = [[[0,1],[3,1],[1.5,4]],
-#              [[4,4],[7,4],[5.5,8]]]
-# nav = Navigation(obstacles,[1.5,0],[4,6])
-# nav.augment_obtacles()
+
+
+# obstacles = [[[147, 358], [83, 358], [81, 415], [146, 414]],
+# [[547, 291], [428, 329], [549, 360]],
+# [[402, 184], [213, 260], [299, 358]],
+# [[77, 154], [78, 208], [141, 208], [140, 152]],
+# [[297, 60], [300, 112], [359, 111], [356, 60]]]
+
+# source = [500,430]
+# goal = [550,50]
+
+# nav = Navigation(obstacles,source,goal)
 # path = nav.get_shortest_path()
-# print(path)
+
+# plt.plot(source[0],source[1],'gs')
+# plt.plot(goal[0],goal[1],'gs')
+
+# for shape in obstacles:
+#     Xshape = []
+#     Yshape = []
+#     for x,y in shape:
+#         Xshape.append(x)
+#         Yshape.append(y)
+
+#     Xshape.append(Xshape[0])
+#     Yshape.append(Yshape[0])
+
+#     plt.plot(Xshape,Yshape,'ro-')
+
+# for shape in nav.get_extended_obstacles():
+#     for x,y in shape:
+#         plt.plot(x,y,'bo')
+    
+# X = []
+# Y = []
+# for point in path:
+#     X.append(point.x)
+#     Y.append(point.y)
+
+# plt.plot(X,Y,'gx-')
+
+# plt.show()
