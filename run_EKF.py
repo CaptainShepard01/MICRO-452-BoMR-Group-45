@@ -54,8 +54,11 @@ def run_EKF(ekf, pos_x, pos_y, theta, u, dt = None, cam = True, ax = None):
         #     cur_t = time.time()
         #     ekf.count_time(cur_t)
         #     ekf.get_state()
-      
-    ekf.update(measured_state, cam)
+
+    if cam:
+        ekf.update(measured_state, cam)
+    else:
+        ekf.update(measured_state[3:], cam)
     measurement_update = ekf.get_state()
     
     if ax is not None:

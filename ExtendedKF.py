@@ -19,10 +19,10 @@ class KalmanFilterExtended:
         self.H_nocam = np.array([[0, 0, 0, 1, 0],
                                  [0, 0, 0, 0, 1]])
 
-        self.Q = 8*np.diag([const.POS_VAR, const.POS_VAR, const.THETA_VAR, const.VEL_VAR, const.VEL_VAR])
+        self.Q = 8*np.diag([const.POS_VAR, const.POS_VAR * 10, const.THETA_VAR, const.VEL_VAR, const.VEL_VAR])
         self.R_cam = np.diag([const.POS_VAR, const.POS_VAR, const.THETA_VAR, const.VEL_VAR, const.VEL_VAR])
         self.R_nocam = np.diag([const.VEL_VAR, const.VEL_VAR])
-        self.P = 8*np.diag([const.POS_VAR, const.POS_VAR, const.THETA_VAR, const.VEL_VAR, const.VEL_VAR])
+        self.P = 500*np.diag([const.POS_VAR, const.POS_VAR, const.THETA_VAR, const.VEL_VAR, const.VEL_VAR])
 
     def compute_fnF(self, x, u, dt):
         theta = x[2]
@@ -62,7 +62,7 @@ class KalmanFilterExtended:
         else:
             R = self.R_nocam
             H = self.H_nocam
-        
+
         z_pred = H @ self.x
         y = z - z_pred
 

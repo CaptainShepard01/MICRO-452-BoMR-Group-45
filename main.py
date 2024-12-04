@@ -88,6 +88,39 @@ def draw_path(frame, path, conversion_factor):
         x_prev, y_prev = x, y
 
 
+def draw_confidence_ellipse(frame, P, mean, color=(0, 255, 255), confidence=0.95):
+    """
+    Draw a confidence ellipse based on the covariance matrix P on an image.
+
+    Parameters:
+        P (np.ndarray): 2x2 covariance matrix for position.
+        image (np.ndarray): Image to draw the ellipse on.
+        color (tuple): Color of the ellipse.
+        confidence (float): Confidence level (default 0.95 for 95%).
+    """
+    # Extract eigenvalues and eigenvectors
+    eigenvalues, eigenvectors = np.linalg.eigh(P)
+
+    # Sort eigenvalues (largest first) and corresponding eigenvectors
+    order = np.argsort(eigenvalues)[::-1]
+    eigenvalues = eigenvalues[order]
+    eigenvectors = eigenvectors[:, order]
+
+    # Calculate the angle of the ellipse in degrees
+    angle = np.degrees(np.arctan2(eigenvectors[1, 0], eigenvectors[0, 0]))
+
+    # Calculate the axis lengths (scaled by confidence)
+    chi_squared_val = np.sqrt(5.991)  # 95% confidence level for 2D
+    amplification = 1
+    major_axis = chi_squared_val * np.sqrt(eigenvalues[0]) * amplification
+    minor_axis = chi_squared_val * np.sqrt(eigenvalues[1]) * amplification
+
+    # Draw the ellipse
+    center = (int(mean[0]), int(mean[1]))
+    axes = (int(major_axis), int(minor_axis))
+    cv2.ellipse(frame, center, axes, angle, 0, 360, color, 2)
+
+
 if __name__ == "__main__":
     # INITIALIZATION
     verbose = False
@@ -183,10 +216,16 @@ if __name__ == "__main__":
                 print("Thymio is being kidnapped")
                 thymio.kidnap()
                 continue
+        else:
+            camera = True
 
 
         # THYMIO POSITION
-        thymio_pos_x, thymio_pos_y, thymio_theta = get_thymio_localisation(markers_data)
+        if camera:
+            thymio_pos_x, thymio_pos_y, thymio_theta = get_thymio_localisation(markers_data)
+        else:
+            thymio_pos_x, thymio_pos_y, thymio_theta = ekf.get_state()[:3]
+            thymio_pos_x = -thymio_pos_x
 
 
         # KALMAN FILTER
@@ -198,6 +237,10 @@ if __name__ == "__main__":
         x = int(round(measured_state[0] * -1 * conversion_factor))
         y = int(round(measured_state[1] * conversion_factor))
         cv2.circle(frame_aruco_and_corners, (x, y), 5, (255, 255, 0), -1)
+
+        # cv2.ellipse(frame_aruco_and_corners, (x, y), (major_axis, minor_axis), theta, 0, 360, (0, 255, 255), 2)
+
+        draw_confidence_ellipse(frame_aruco_and_corners, ekf.get_cov()[:2, :2], [x, y], color=(0, 255, 255))
 
         cv2.imshow("Main frame", frame_aruco_and_corners)
 
@@ -213,10 +256,14 @@ if __name__ == "__main__":
             ekf = KalmanFilterExtended(np.array([thymio_pos_x * -1, thymio_pos_y, thymio_theta]), u)
             camera = True
 
-        thymio_theta = (thymio_theta + 180) % 360
-        thymio_pos_x = -thymio_pos_x
-        thymio.set_position(np.array([thymio_pos_x, thymio_pos_y]))
-        thymio.set_orientation(thymio_theta * np.pi / 180)
+        if camera:
+            thymio_theta = ((thymio_theta + 180) % 360) * np.pi / 180
+            thymio_pos_x = -thymio_pos_x
+            thymio.set_position(np.array([thymio_pos_x, thymio_pos_y]))
+            thymio.set_orientation(thymio_theta)
+        else:
+            thymio.set_position(np.array([measured_state[0], measured_state[1]]))
+            thymio.set_orientation(measured_state[2])
 
         # MOVEMENT
         target = global_path[0]
