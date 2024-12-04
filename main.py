@@ -137,12 +137,9 @@ if __name__ == "__main__":
     check_num = 0
     drawing_path = deepcopy(global_path)
 
-    # Thymio position, orientation and goal setting
+    # Thymio goal setting
     goal_pos[0] = -goal_pos[0]
-    thymio.set_position(np.array([thymio_pos_x, thymio_pos_y]))
-    thymio.set_orientation(thymio_theta)
     thymio.set_goal(goal_pos)
-
 
     # create and initialize the Kalman filter
     u = thymio.get_wheels_speed()
@@ -166,7 +163,6 @@ if __name__ == "__main__":
         corners = vision.get_corners_and_shape_edges(edges)             # We obtain shapes and corners by approxPolyDP
 
         frame_with_vectors, markers_data, marker_ids, _ = get_frame_with_vectors(vision, frame)
-        corners_mm = [np.array(shape) / conversion_factor for shape in corners]
         frame_aruco_and_corners = frame_with_vectors.copy()
 
         # Draw obstacles and path
@@ -183,7 +179,8 @@ if __name__ == "__main__":
             thymio.kidnap()
             continue
 
-        # Kalman filter
+        # KALMAN FILTER
+
 
         # THYMIO POSITION
         thymio_pos_x, thymio_pos_y, thymio_theta = get_thymio_localisation(markers_data)
