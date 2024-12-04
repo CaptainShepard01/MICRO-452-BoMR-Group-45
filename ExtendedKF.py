@@ -24,13 +24,13 @@ class KalmanFilterExtended:
         self.R_nocam = np.diag([const.VEL_VAR, const.VEL_VAR])
         self.P = 8*np.diag([const.POS_VAR, const.POS_VAR, const.THETA_VAR, const.VEL_VAR, const.VEL_VAR])
 
-    def compute_fnF(self, dt):
+    def compute_fnF(self, x, u, dt):
         # pos_x, pos_y, theta = self.x[0], self.x[1], self.x[2]
         # left_wheel_speed, right_wheel_speed = self.x[3], self.x[4]
-        theta = self.x[2]
-        vf = (self.x[3] + self.x[4]) / 2
+        theta = x[2]
+        vf = (u[0] + u[1]) / 2
         wheel_base = 100 # mm
-        dtheta = (self.x[4] - self.x[3]) / wheel_base
+        dtheta = (u[1] - u[0]) / wheel_base
         
         coS = np.cos(theta)
         siN = np.sin(theta)
@@ -53,8 +53,8 @@ class KalmanFilterExtended:
         
         return f, F
     
-    def prediction(self, dt):
-        f, F = self.compute_fnF(dt)
+    def prediction(self, x, u, dt):
+        f, F = self.compute_fnF(x, u, dt)
         self.x = f
         self.P = F @ self.P @ F.T + self.Q
 
