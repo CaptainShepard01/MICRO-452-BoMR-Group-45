@@ -3,7 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import pyvisgraph as vg
 
-THYMIO_RADIUS = 50 # mm
+THYMIO_RADIUS = 20 # mm
 
 # Navigation class
 class Navigation:
@@ -48,18 +48,25 @@ class Navigation:
                 dir1 = np.array(edge1 / np.linalg.norm(edge1))
                 dir2 = np.array(edge2 / np.linalg.norm(edge2))
 
-                perp1 = np.array([dir1[1], -dir1[0]])
-                perp2 = np.array([dir2[1], -dir2[0]])
+                perp1 = -np.array([dir1[1], -dir1[0]])
+                perp2 = -np.array([dir2[1], -dir2[0]])
 
+                angle = np.arccos(np.clip(np.dot(-dir1, dir2), -1.0, 1.0))
+
+                print(vertex)
                 print(perp1, perp2)
 
                 # v1 = vertex - THYMIO_RADIUS * dir2
                 # v2 = vertex + THYMIO_RADIUS * dir1
-                v1 = vertex + THYMIO_RADIUS * dir1 - THYMIO_RADIUS * perp1
-                v2 = vertex - THYMIO_RADIUS * dir2 - THYMIO_RADIUS * perp2
+                v1 = vertex + THYMIO_RADIUS * dir1 + THYMIO_RADIUS * perp1
+                v2 = vertex - THYMIO_RADIUS * dir2 + THYMIO_RADIUS * perp2
 
-                extended_polygon.append(v1)
-                extended_polygon.append(v2)
+                if angle <= np.pi / 2.0:
+                    extended_polygon.append(v1)
+                    extended_polygon.append(v2)
+                else:
+                    extended_polygon.append(v2)
+                    extended_polygon.append(v1)
 
                 # extended_polygon.append(0.5 * np.add(v1,v2))
                 # extended_polygon.append(vertex - THYMIO_RADIUS * perp1)
@@ -110,14 +117,18 @@ class Navigation:
 # [[77, 154], [78, 208], [141, 208], [140, 152]],
 # [[297, 60], [300, 112], [359, 111], [356, 60]]]
 
-# source = [500,430]
+# obstacles = [[[147, 358], [83, 358], [81, 415], [146, 414]]]
+# obstacles = [[[547, 291], [428, 329], [549, 360]]]
+
+# source = [50,430]
 # goal = [550,50]
 
 # nav = Navigation(obstacles,source,goal)
 # path = nav.get_shortest_path()
 
-# plt.plot(source[0],source[1],'gs')
-# plt.plot(goal[0],goal[1],'gs')
+# fig = plt.figure()
+# plt.plot(source[0],source[1],'rs', label='source')
+# plt.plot(goal[0],goal[1],'rx', label='goal')
 
 # for shape in obstacles:
 #     Xshape = []
@@ -129,11 +140,17 @@ class Navigation:
 #     Xshape.append(Xshape[0])
 #     Yshape.append(Yshape[0])
 
-#     plt.plot(Xshape,Yshape,'ro-')
+#     plt.plot(Xshape,Yshape,'r-')
 
+# X = []
+# Y = []
 # for shape in nav.get_extended_obstacles():
 #     for x,y in shape:
+#         X.append(x)
+#         Y.append(y)
 #         plt.plot(x,y,'bo')
+
+# plt.plot(X,Y,'bo',label='padding')
     
 # X = []
 # Y = []
@@ -141,6 +158,9 @@ class Navigation:
 #     X.append(point.x)
 #     Y.append(point.y)
 
-# plt.plot(X,Y,'gx-')
+# plt.plot(X,Y,'g--', label='path')
+
+
+# plt.legend()
 
 # plt.show()
