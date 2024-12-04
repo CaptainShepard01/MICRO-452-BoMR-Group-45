@@ -169,7 +169,7 @@ class ComputerVision:
         corners, marker_ids, _ = cv2.aruco.detectMarkers(frame_with_markers, self.aruco_dict, parameters=self.aruco_params)
 
         if marker_ids is not None:
-            aruco_side_pixels = abs(corners[0][0][0][0] - corners[0][0][1][0])
+            aruco_diagonal_pixels = math.sqrt((corners[0][0][2][1] - corners[0][0][0][1])**2 + (corners[0][0][2][0] - corners[0][0][0][0])**2)
 
             # Draw detected markers
             cv2.aruco.drawDetectedMarkers(frame_with_markers, corners, marker_ids)
@@ -179,7 +179,7 @@ class ComputerVision:
                 self.ARUCO_MARKER_SIDE_LENGTH,
                 self.mtx,
                 self.dst)
-            return frame_with_markers, marker_ids, rvecs, tvecs, aruco_side_pixels
+            return frame_with_markers, marker_ids, rvecs, tvecs, aruco_diagonal_pixels
 
         return None, None, None, None, 1
 
