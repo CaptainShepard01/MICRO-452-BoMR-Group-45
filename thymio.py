@@ -21,14 +21,17 @@ class Thymio():
     LEDS_PROX_V = "leds.prox.v"
 
     GOAL_THRESHOLD = 10
-    OBSTACLE_THRESHOLD = 1000
-    SCALE = 0.01
+    OBSTACLE_THRESHOLD = 1800
+    SCALE = 0.03
     SPEED = 50
+
+    W = np.array([[2, 1, -3, -1, -2], [-2, -1, -3, 1, 2]]) * SCALE
 
     goal = None
     position = None
     orientation = None
     is_on_goal = False
+    is_kidnapped = False
 
     K_RHO = 2
     K_ALPHA = 300
@@ -129,9 +132,7 @@ class Thymio():
         :return: True if no obstacles are detected
         """
         while np.any(self.get_horizontal_sensors() > self.OBSTACLE_THRESHOLD):
-            W = np.array([[2, 1, -1, -1, -2], [-2, -1, -1, 1, 2]]) * self.SCALE
-
-            motor_values = W @ self.get_horizontal_sensors().T + self.SPEED
+            motor_values = self.W @ self.get_horizontal_sensors().T + self.SPEED
             left_motor = int(motor_values[0])
             right_motor = int(motor_values[1])
 
@@ -142,6 +143,20 @@ class Thymio():
         Stops the Thymio
         """
         self.set_motors(0, 0)
+
+    def kidnap(self):
+        """
+        Kidnaps the Thymio
+        """
+        self.is_kidnapped = True
+        self.stop()
+
+    def recover(self):
+        """
+        Recovers the Thymio from kidnapping
+        """
+        self.is_kidnapped = False
+        self.stop()
 
     def set_goal(self, goal):
         """
