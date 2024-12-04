@@ -143,7 +143,7 @@ class ComputerVision:
     def detect_and_estimate_pose(self, frame):
         """
         Takes a frame as input, detects ArUco markers using the specified dictionary and parameters, 
-        and estimates the pose of the detected markers using the camera matrix (`mtx`)
+        and estimates the pose of the detected markers using the camera matrix (mtx)
         
         :param original_frame: input frame/image where you want to detect ArUco markers and estimate
         their pose. 
@@ -157,10 +157,11 @@ class ComputerVision:
         :param dst: distortion coefficients of the camera obtained by calibration.
 
         :return:
-        1. `frame_with_markers`: The original frame with detected ArUco markers drawn on it.
-        2. `marker_ids`: The IDs of the detected ArUco markers.
-        3. `rvecs`: The rotation vectors estimated for each detected marker.
-        4. `tvecs`: The translation vectors estimated for each detected marker.
+        1. frame_with_markers: The original frame with detected ArUco markers drawn on it.
+        2. marker_ids: The IDs of the detected ArUco markers.
+        3. rvecs: The rotation vectors estimated for each detected marker.
+        4. tvecs: The translation vectors estimated for each detected marker.
+        5. aruco_side_pixels
         """
 
         frame_with_markers = frame.copy()
@@ -168,6 +169,8 @@ class ComputerVision:
         corners, marker_ids, _ = cv2.aruco.detectMarkers(frame_with_markers, self.aruco_dict, parameters=self.aruco_params)
 
         if marker_ids is not None:
+            aruco_side_pixels = abs(corners[0][0][0][0] - corners[0][0][1][0])
+
             # Draw detected markers
             cv2.aruco.drawDetectedMarkers(frame_with_markers, corners, marker_ids)
 
@@ -176,9 +179,9 @@ class ComputerVision:
                 self.ARUCO_MARKER_SIDE_LENGTH,
                 self.mtx,
                 self.dst)
-            return frame_with_markers, marker_ids, rvecs, tvecs
+            return frame_with_markers, marker_ids, rvecs, tvecs, aruco_side_pixels
 
-        return None, None, None, None
+        return None, None, None, None, 1
 
 
 

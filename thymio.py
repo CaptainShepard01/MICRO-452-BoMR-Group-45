@@ -20,6 +20,7 @@ class Thymio():
     LEDS_PROX_H = "leds.prox.h"
     LEDS_PROX_V = "leds.prox.v"
 
+    GOAL_THRESHOLD = 50
     OBSTACLE_THRESHOLD = 1000
     SCALE = 0.01
     SPEED = 50
@@ -29,12 +30,12 @@ class Thymio():
     orientation = None
     is_on_goal = False
 
-    K_RHO = 5
-    K_ALPHA = 500
+    K_RHO = 2
+    K_ALPHA = 300
     K_BETA = -0.001
     WHEELBASE = 0.09
 
-    ONETURN = 16 # ms for a full turn
+    ONETURN = 16 # seconds
     ANGLE_THRESHOLD = 0.01
 
     def __init__(self):
@@ -54,7 +55,6 @@ class Thymio():
         :param leds: list of LED values
         :param led_type: type of LEDs to set
         """
-
         aw(self.node.set_variables({
             led_type: leds
         }))
@@ -84,6 +84,7 @@ class Thymio():
         if verbose:
             print("\t\t Setting speed : ", left_motor, right_motor)
 
+        # aw(self.client.wait_for_status(self.client.NODE_STATUS_READY))
         aw(self.node.set_variables({
             self.MOTOR_LEFT: [left_motor],
             self.MOTOR_RIGHT: [right_motor]
@@ -159,7 +160,7 @@ class Thymio():
         """
         self.position = position
 
-    def set_orientation(self, orientation: np.ndarray):
+    def set_orientation(self, orientation):
         """
         Sets the orientation of the Thymio
         :param orientation: orientation of the Thymio
@@ -172,16 +173,33 @@ class Thymio():
         :param target: next target position
         """
         path = target - self.position
-        angle = np.arctan2(path[0], path[1]) - self.orientation
 
-        time_to_turn = abs(angle) * self.ONETURN / (2 * np.pi)
+        dst = np.sqrt(np.sum(np.square(path)))
+        print("Distance: ", dst)
+
+        if dst <= self.GOAL_THRESHOLD:
+            self.is_on_goal = True
+            return
+
+        angle = self.orientation - np.arctan2(path[1], path[0])
+
+        if angle > np.pi:
+            angle = angle - 2 * np.pi
+
+        time_to_turn = max(abs(angle) * self.ONETURN / (2 * np.pi) - 1, 0)
+
+        print("Orientation: ", self.orientation)
+        print("Angle: ", angle)
+        print("Position: ", self.position)
+        print("Target: ", target)
+        print("Time to turn: ", time_to_turn)
 
         if angle > self.ANGLE_THRESHOLD:
             self.set_motors(self.SPEED, -self.SPEED)
-            time.sleep(time_to_turn)
+            # time.sleep(time_to_turn)
         elif angle < -self.ANGLE_THRESHOLD:
             self.set_motors(-self.SPEED, self.SPEED)
-            time.sleep(time_to_turn)
+            # time.sleep(time_to_turn)
 
         self.set_motors(self.SPEED, self.SPEED)
 
@@ -190,19 +208,36 @@ class Thymio():
         Move the Thymio towards the goal depending on the position and the next target
         :param target: next target position
         """
+        # self.position[1] = -self.position[1]
+        # target[1] = -target[1]
+
         d = target - self.position
         rho = np.sqrt(np.sum(np.square(d)))
+
+        if rho <= self.GOAL_THRESHOLD:
+            self.is_on_goal = True
+            return
+
         if verbose:
             print("Orientation: ", self.orientation)
             print("Rho: ", rho)
             print("Dy: ", d[1])
             print("Dx: ", d[0])
+            print("Target: ", target)
+            print("Position: ", self.position)
 
         alpha = -self.orientation + np.arctan2(d[1], d[0])
         beta = -self.orientation - alpha
 
+        # if verbose:
+        #     print("Alpha: ", alpha)
+
         v = self.K_RHO * rho
-        w = self.WHEELBASE / 2 * (self.K_ALPHA * alpha + self.K_BETA * beta)
+        w = (self.K_ALPHA * alpha + self.K_BETA * beta)
+
+        if verbose:
+            print("V: ", v)
+            print("W: ", w)
 
         left_motor = v - w
         right_motor = v + w
@@ -211,7 +246,7 @@ class Thymio():
             print("Left motor: ", left_motor)
             print("Right motor: ", right_motor)
 
-        self.set_motors(int(np.floor(left_motor)), int(np.floor(right_motor)))
+        self.set_motors(int(np.floor(left_motor * 0.1)), int(np.floor(right_motor * 0.1)))
 
     def plot_direction(self, goal):
         """
