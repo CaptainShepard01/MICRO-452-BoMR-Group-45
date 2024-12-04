@@ -36,9 +36,8 @@ def run_EKF(ekf, pos_x, pos_y, theta, u, dt = None, cam = True, ax = None):
         cur_t = time.time()
         dt = cur_t - ekf.previous_time()
         ekf.count_time(cur_t)
-    
-    # ekf.compute_fnF(dt)
-    ekf.prediction([pos_x, pos_y, theta], u, dt)
+
+    ekf.prediction(dt)
     measured_state = ekf.get_state()
     
     if cam:
@@ -55,10 +54,7 @@ def run_EKF(ekf, pos_x, pos_y, theta, u, dt = None, cam = True, ax = None):
         #     ekf.count_time(cur_t)
         #     ekf.get_state()
 
-    if cam:
-        ekf.update(measured_state, cam)
-    else:
-        ekf.update(measured_state[3:], cam)
+    ekf.update([pos_x, pos_y, theta], u, cam)
     measurement_update = ekf.get_state()
     
     if ax is not None:
