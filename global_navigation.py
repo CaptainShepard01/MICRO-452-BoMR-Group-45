@@ -3,7 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import pyvisgraph as vg
 
-THYMIO_RADIUS = 75 # mm
+THYMIO_RADIUS = 50 # mm
 
 # Navigation class
 class Navigation:
@@ -42,17 +42,29 @@ class Navigation:
                 prev = polygon[i-1]
                 next = (polygon[i+1] if i < count-1 else polygon[0])
 
-                edge1 = np.subtract(vertex,prev)
+                edge1 = np.subtract(vertex, prev)
                 edge2 = np.subtract(next,vertex)
 
-                dir1 = edge1 / np.linalg.norm(edge1)
-                dir2 = -edge2 / np.linalg.norm(edge2)
+                dir1 = np.array(edge1 / np.linalg.norm(edge1))
+                dir2 = np.array(edge2 / np.linalg.norm(edge2))
 
-                v1 = vertex + THYMIO_RADIUS * dir2
-                v2 = vertex + THYMIO_RADIUS * dir1
+                perp1 = np.array([dir1[1], -dir1[0]])
+                perp2 = np.array([dir2[1], -dir2[0]])
 
-                extended_polygon.append(0.5 * np.add(v1,v2))
-                # extended_polygon.append(vertex + THYMIO_RADIUS * dir1)
+                print(perp1, perp2)
+
+                # v1 = vertex - THYMIO_RADIUS * dir2
+                # v2 = vertex + THYMIO_RADIUS * dir1
+                v1 = vertex + THYMIO_RADIUS * dir1 - THYMIO_RADIUS * perp1
+                v2 = vertex - THYMIO_RADIUS * dir2 - THYMIO_RADIUS * perp2
+
+                extended_polygon.append(v1)
+                extended_polygon.append(v2)
+
+                # extended_polygon.append(0.5 * np.add(v1,v2))
+                # extended_polygon.append(vertex - THYMIO_RADIUS * perp1)
+                # extended_polygon.append(v1 + v2 - vertex)
+                # extended_polygon.append(vertex - THYMIO_RADIUS * perp2)
                 # extended_polygon.append(vertex + THYMIO_RADIUS * dir2)
 
             self.extended_obstacles.append(extended_polygon)
