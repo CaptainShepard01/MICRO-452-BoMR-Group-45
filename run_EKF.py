@@ -4,6 +4,7 @@ from ExtendedKF import KalmanFilterExtended
 import ExtendedKF
 import matplotlib.pyplot as plt
 from matplotlib.patches import Ellipse
+import constants as const
 
 
 def confidence_ellipse(P, measured_state, ax):
@@ -28,17 +29,16 @@ def confidence_ellipse(P, measured_state, ax):
     
 
 # might also have to add kidnapping mode (i.e. kidnap = True)
-def run_EKF(ekf, pos_x, pos_y, theta, u, dt = None, cam = True, ax = None): 
+def run_EKF(ekf, pos_x, pos_y, theta, u, dt = None, cam = True, ax = None):
     kidnap = False
-    initial_pos = np.array([pos_x, pos_y, theta])
 
     if dt is None:
         cur_t = time.time()
         dt = cur_t - ekf.previous_time()
         ekf.count_time(cur_t)
     
-    ekf.compute_fnF(dt)
-    ekf.prediction(dt)
+    # ekf.compute_fnF(dt)
+    ekf.prediction([pos_x, pos_y, theta], u, dt)
     measured_state = ekf.get_state()
     
     if cam:
@@ -48,14 +48,14 @@ def run_EKF(ekf, pos_x, pos_y, theta, u, dt = None, cam = True, ax = None):
         #dpos = np.linalg.norm(np.array([pos_x, pos_y]) - pos_prev)  #Euclidean distance
         dtheta = abs(theta - angle_prev)
         
-        if dpos > const.KN_DIST or dtheta > const.KN_THETA:
-            kidnap = True
-            print('... Thymio is being kidnapped ...')
-            cur_t = time.time()
-            ekf.count_time(cur_t)
-            ekf.get_state()
+        # if dpos > const.KN_DIST or dtheta > const.KN_THETA:
+        #     kidnap = True
+        #     print('... Thymio is being kidnapped ...')
+        #     cur_t = time.time()
+        #     ekf.count_time(cur_t)
+        #     ekf.get_state()
       
-    ekf.update(measured_state, cam,  0.1) 
+    ekf.update(measured_state, cam)
     measurement_update = ekf.get_state()
     
     if ax is not None:

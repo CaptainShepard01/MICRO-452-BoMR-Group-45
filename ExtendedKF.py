@@ -25,24 +25,20 @@ class KalmanFilterExtended:
         self.P = 8*np.diag([const.POS_VAR, const.POS_VAR, const.THETA_VAR, const.VEL_VAR, const.VEL_VAR])
 
     def compute_fnF(self, x, u, dt):
-        # pos_x, pos_y, theta = self.x[0], self.x[1], self.x[2]
-        # left_wheel_speed, right_wheel_speed = self.x[3], self.x[4]
         theta = x[2]
         vf = (u[0] + u[1]) / 2
         wheel_base = 100 # mm
-        dtheta = (u[1] - u[0]) / wheel_base
         
         coS = np.cos(theta)
         siN = np.sin(theta)
 
         f = np.array([
-            self.x[0] + vf * coS * dt,                  
-            self.x[1] + vf * siN * dt,                  
-            theta + dtheta * dt,                    
-            self.x[3],                       
-            self.x[4]                       
-            ])
-        
+            [1, 0, 0, 0.5 * coS * dt, 0.5 * coS * dt],
+            [0, 1, 0, 0.5 * siN * dt, 0.5 * siN * dt],
+            [0, 0, 1, - dt / wheel_base, dt / wheel_base],
+            [0, 0, 0, 1, 0],
+            [0, 0, 0, 0, 1]]
+        )
 
         F = np.array([
             [1, 0, -vf * siN * dt, 0.5 * coS * dt, 0.5 * coS * dt],
@@ -55,11 +51,9 @@ class KalmanFilterExtended:
     
     def prediction(self, x, u, dt):
         f, F = self.compute_fnF(x, u, dt)
-        self.x = f
+        new_state = np.array([x[0], x[1], x[2], u[0], u[1]])
+        self.x = f @ new_state
         self.P = F @ self.P @ F.T + self.Q
-
-        # self.P = 0.5 * (self.P + self.P.T)
-        # self.P += np.eye(self.P.shape[0]) * 1e-6
     
     def update(self, z, cam):
         if cam:
@@ -76,15 +70,6 @@ class KalmanFilterExtended:
         K = self.P @ H.T @ np.linalg.pinv(S)
         self.x += K @ y
         self.P = self.P - K @ H @ self.P
-
-        # Additional covariance update with residual outer product
-        # update = learning_rate * np.outer(y, y)
-        # if H.shape[0] == 2:  # 2D measurement space (e.g., position)
-        #     self.P[:2, :2] += update  # Update only the top-left 2x2 block
-        # else:
-        #     self.P += update
-        # Ensure covariance matrix symmetry and numerical stability
-        # self.P = 0.5 * (self.P + self.P.T) + np.eye(self.P.shape[0]) * 1e-6
 
     def get_state(self):
         return self.x

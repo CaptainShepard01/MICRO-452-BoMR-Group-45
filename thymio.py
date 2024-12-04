@@ -97,7 +97,7 @@ class Thymio():
         :param verbose: whether to print status messages or not
         """
 
-        aw(self.client.wait_for_status(self.client.NODE_STATUS_READY))
+        # aw(self.client.wait_for_status(self.client.NODE_STATUS_READY))
         aw(self.node.wait_for_variables({self.SENSORS_HORIZONTAL}))
 
         values = self.node.var[self.SENSORS_HORIZONTAL]
@@ -114,7 +114,7 @@ class Thymio():
         :param verbose: whether to print status messages or not
         """
 
-        aw(self.client.wait_for_status(self.client.NODE_STATUS_READY))
+        # aw(self.client.wait_for_status(self.client.NODE_STATUS_READY))
         aw(self.node.wait_for_variables({self.SPEED_LEFT, self.SPEED_RIGHT}))
 
         left_speed = self.node.var[self.SPEED_LEFT]
@@ -137,6 +137,8 @@ class Thymio():
             right_motor = int(motor_values[1])
 
             self.set_motors(left_motor, right_motor)
+
+        time.sleep(1)
 
     def stop(self):
         """

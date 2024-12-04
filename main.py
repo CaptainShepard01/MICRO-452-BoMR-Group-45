@@ -7,6 +7,7 @@ import cv2
 import numpy as np
 from win32comext.adsi.demos.scp import verbose
 
+from run_EKF import run_EKF
 from thymio import Thymio
 from ComputerVision import ComputerVision
 from ExtendedKF import KalmanFilterExtended
@@ -52,31 +53,31 @@ def get_goal_position(markers_data):
     return goal_pos
 
 
+def convert_2_pixels(coordinates, conversion_factor):
+    return int(round(coordinates[0] * conversion_factor)), int(round(coordinates[1] * conversion_factor))
+
+
 def draw_obstacles(frame, navigation, conversion_factor):
     for shape in navigation.obstacles:
         for x, y in shape:
-            x = int(x * conversion_factor)
-            y = int(y * conversion_factor)
+            x, y = convert_2_pixels((x, y), conversion_factor)
             cv2.circle(frame, (x, y), 5, (0, 255, 0), -1)
 
     for shape in navigation.get_extended_obstacles():
         for x, y in shape:
-            x = int(x * conversion_factor)
-            y = int(y * conversion_factor)
+            x, y = convert_2_pixels((x, y), conversion_factor)
             cv2.circle(frame, (x, y), 5, (255, 0, 0), -1)
 
 
 def draw_path(frame, path, conversion_factor):
     prev_point = path[0]
 
-    x_prev = int(prev_point.x * conversion_factor)
-    y_prev = int(prev_point.y * conversion_factor)
+    x_prev, y_prev = convert_2_pixels((prev_point.x, prev_point.y), conversion_factor)
     # First point
     cv2.circle(frame, (int(prev_point.x * conversion_factor), int(prev_point.y * conversion_factor)), 5, (0, 0, 255), -1)
 
     for point in path[1:]:
-        x = int(point.x * conversion_factor)
-        y = int(point.y * conversion_factor)
+        x, y = convert_2_pixels((point.x, point.y), conversion_factor)
 
         # Line from point to point
         cv2.line(frame, (x_prev, y_prev), (x, y), (0, 0, 255), 2)
@@ -84,8 +85,7 @@ def draw_path(frame, path, conversion_factor):
         cv2.circle(frame, (x, y), 5, (0, 0, 255), -1)
 
         prev_point = point
-        x_prev = int(prev_point.x * conversion_factor)
-        y_prev = int(prev_point.y * conversion_factor)
+        x_prev, y_prev = x, y
 
 
 if __name__ == "__main__":
@@ -143,7 +143,8 @@ if __name__ == "__main__":
 
     # create and initialize the Kalman filter
     u = thymio.get_wheels_speed()
-    ekf = KalmanFilterExtended(np.array([thymio_pos_x, thymio_pos_y, thymio_theta]), u)
+    ekf = KalmanFilterExtended(np.array([thymio_pos_x * -1, thymio_pos_y, thymio_theta]), u)
+    camera = True
 
     # MAIN LOOP
     while not thymio.is_on_goal:
@@ -169,21 +170,36 @@ if __name__ == "__main__":
         draw_obstacles(frame_aruco_and_corners, navigation, conversion_factor)
         draw_path(frame_aruco_and_corners, drawing_path, conversion_factor)
 
-        cv2.imshow("Main frame", frame_aruco_and_corners)
 
         ### Detection if camera is covered ###
         # We check if self.ARUCO_ROBOT_ID is in the detected markers
         camera_covered = vision.is_camera_covered(marker_ids)
         if camera_covered:
-            print("Thymio is being kidnapped")
-            thymio.kidnap()
-            continue
-
-        # KALMAN FILTER
+            goal_pos = get_goal_position(markers_data)
+            if goal_pos is None:
+                print("Camera is covered!")
+                camera = False
+            else:
+                print("Thymio is being kidnapped")
+                thymio.kidnap()
+                continue
 
 
         # THYMIO POSITION
         thymio_pos_x, thymio_pos_y, thymio_theta = get_thymio_localisation(markers_data)
+
+
+        # KALMAN FILTER
+        u = thymio.get_wheels_speed()
+        theta = ((thymio_theta + 180) % 360) * np.pi / 180
+
+        measured_state = run_EKF(ekf, thymio_pos_x * -1, thymio_pos_y, theta, u, cam=camera)
+
+        x = int(round(measured_state[0] * -1 * conversion_factor))
+        y = int(round(measured_state[1] * conversion_factor))
+        cv2.circle(frame_aruco_and_corners, (x, y), 5, (255, 255, 0), -1)
+
+        cv2.imshow("Main frame", frame_aruco_and_corners)
 
         # ACCOUNT FOR KIDNAPPING
         if thymio.is_kidnapped:
@@ -192,6 +208,10 @@ if __name__ == "__main__":
             global_path = navigation.get_shortest_path()
             drawing_path = deepcopy(global_path)
             check_num = 0
+
+            u = thymio.get_wheels_speed()
+            ekf = KalmanFilterExtended(np.array([thymio_pos_x * -1, thymio_pos_y, thymio_theta]), u)
+            camera = True
 
         thymio_theta = (thymio_theta + 180) % 360
         thymio_pos_x = -thymio_pos_x
@@ -206,6 +226,7 @@ if __name__ == "__main__":
             global_path.pop(0)
 
         if cv2.waitKey(1) & 0xFF == ord('q'):
+            thymio.stop()
             break
 
     vision.release()
