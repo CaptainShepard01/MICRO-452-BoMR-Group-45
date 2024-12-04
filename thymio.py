@@ -23,9 +23,9 @@ class Thymio():
     GOAL_THRESHOLD = 10
     OBSTACLE_THRESHOLD = 1800
     SCALE = 0.03
-    SPEED = 50
+    SPEED = 70
 
-    W = np.array([[2, 1, -3, -1, -2], [-2, -1, -3, 1, 2]]) * SCALE
+    W = np.array([[2, 1, -4, -1, -2], [-2, -1, -2, 1, 2]]) * SCALE
 
     goal = None
     position = None
@@ -156,7 +156,6 @@ class Thymio():
         Recovers the Thymio from kidnapping
         """
         self.is_kidnapped = False
-        self.stop()
 
     def set_goal(self, goal):
         """
