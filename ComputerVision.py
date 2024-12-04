@@ -167,10 +167,9 @@ class ComputerVision:
         frame_with_markers = frame.copy()
 
         corners, marker_ids, _ = cv2.aruco.detectMarkers(frame_with_markers, self.aruco_dict, parameters=self.aruco_params)
-        
 
         if marker_ids is not None:
-            aruco_side_pixels = abs(corners[0][0][0][0] - corners[0][0][0][1])
+            aruco_side_pixels = abs(corners[0][0][0][0] - corners[0][0][1][0])
 
             # Draw detected markers
             cv2.aruco.drawDetectedMarkers(frame_with_markers, corners, marker_ids)
