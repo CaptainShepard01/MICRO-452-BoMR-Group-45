@@ -133,6 +133,11 @@ if __name__ == "__main__":
             for x, y in shape:
                 cv2.circle(frame_aruco_and_corners, (x, y), 3, (0, 255, 0), -1)
 
+        # Visualize graph nodes (extended obstacles vertices)
+        for shape in navigation.get_extended_obstacles():
+            for x, y in shape:
+                cv2.circle(frame_aruco_and_corners, (x, y), 5, (255, 0, 0), -1)
+
         prev_point = global_path[0]
         for point in global_path:
             cv2.circle(frame_aruco_and_corners, (int(point.x), int(point.x)), 5, (0, 0, 255), -1)
