@@ -5,6 +5,7 @@ import time
 
 import cv2
 import numpy as np
+from win32comext.adsi.demos.scp import verbose
 
 from thymio import Thymio
 from ComputerVision import ComputerVision
@@ -13,7 +14,7 @@ from global_navigation import Navigation
 
 
 def get_frame_with_vectors(vision, frame):
-    frame_with_markers, marker_ids, rvecs, tvecs, aruco_side_pixels = vision.detect_and_estimate_pose(frame)
+    frame_with_markers, marker_ids, rvecs, tvecs, aruco_diagonal_pixels = vision.detect_and_estimate_pose(frame)
 
     # Will contain ID, x, y, angle of each detected marker
     markers_data = []
@@ -22,11 +23,12 @@ def get_frame_with_vectors(vision, frame):
         frame_with_vectors, markers_data = vision.process_marker_pose(frame_with_markers, marker_ids, rvecs, tvecs)
     else:
         frame_with_vectors = frame.copy()
-    
+
     # Conversion from pixels to mm
-    conversion_factor = aruco_side_pixels/45
+    conversion_factor = aruco_diagonal_pixels / (math.sqrt(2) * 45)
 
     return frame_with_vectors, markers_data, marker_ids, conversion_factor
+
 
 def get_thymio_localisation(markers_data):
     thymio_pos_x, thymio_pos_y, thymio_theta = None, None, None
@@ -38,6 +40,7 @@ def get_thymio_localisation(markers_data):
 
     return thymio_pos_x, thymio_pos_y, thymio_theta
 
+
 def get_goal_position(markers_data):
     goal_pos = None
 
@@ -48,66 +51,108 @@ def get_goal_position(markers_data):
 
     return goal_pos
 
-def distance(p1, p2):
-    """Calculate the Euclidean distance between two points."""
-    return math.sqrt((p1[0] - p2[0])**2 + (p1[1] - p2[1])**2)
 
-def merge_close_corners_simple(corners, threshold: float = 5):
-    def merge_shape(shape):
-        unique_points = []
-        for point in shape:
-            if not any(distance(point, unique_point) < threshold for unique_point in unique_points):
-                unique_points.append(point)
-        return unique_points
+def draw_obstacles(frame, navigation, conversion_factor):
+    for shape in navigation.obstacles:
+        for x, y in shape:
+            x = int(x * conversion_factor)
+            y = int(y * conversion_factor)
+            cv2.circle(frame, (x, y), 5, (0, 255, 0), -1)
 
-    return [merge_shape(shape) for shape in corners]
+    for shape in navigation.get_extended_obstacles():
+        for x, y in shape:
+            x = int(x * conversion_factor)
+            y = int(y * conversion_factor)
+            cv2.circle(frame, (x, y), 5, (255, 0, 0), -1)
+
+
+def draw_path(frame, path, conversion_factor):
+    prev_point = path[0]
+
+    x_prev = int(prev_point.x * conversion_factor)
+    y_prev = int(prev_point.y * conversion_factor)
+    # First point
+    cv2.circle(frame, (int(prev_point.x * conversion_factor), int(prev_point.y * conversion_factor)), 5, (0, 0, 255), -1)
+
+    for point in path[1:]:
+        x = int(point.x * conversion_factor)
+        y = int(point.y * conversion_factor)
+
+        # Line from point to point
+        cv2.line(frame, (x_prev, y_prev), (x, y), (0, 0, 255), 2)
+        # Next point
+        cv2.circle(frame, (x, y), 5, (0, 0, 255), -1)
+
+        prev_point = point
+        x_prev = int(prev_point.x * conversion_factor)
+        y_prev = int(prev_point.y * conversion_factor)
 
 
 if __name__ == "__main__":
-    vision = ComputerVision(1)
-    thymio = Thymio()
-    thymio.reset_leds()
+    # INITIALIZATION
+    verbose = False
+    NUMBER_OF_OBSTACLES = 3
 
+
+    # COMPUTER VISION
+    vision = ComputerVision(camera_index=1, robot_id=4, goal_id=8)
     corners = []
 
     ret, frame = vision.cam.read()
-    # While loop here to make sure camera is not noisy
+    # While loop to avoid noisy detections when camera starts
     while True:
         if not ret:
             print("Failed to capture frame. Exiting.")
 
-        frame_masked = vision.apply_color_mask(frame,
-                                               mask_color='r')  # We apply a red mask to detect only red obstacles
+        frame_masked = vision.apply_color_mask(frame,  mask_color='r')  # We apply a red mask to detect only red obstacles
         frame_with_vectors, markers_data, marker_ids, conversion_factor = get_frame_with_vectors(vision, frame)
         edges = vision.detect_edges(frame_masked)  # We detect the edges on the masked frame using Canny
         corners = vision.get_corners_and_shape_edges(edges)  # We obtain shapes and corners by approxPolyDP
-        corners_mm = [np.array(shape) * 1/conversion_factor for shape in corners]
 
         ret, frame = vision.cam.read()
 
-        if len(corners) == 5:
+        # If all the obstacles are detected, we can break the loop
+        if len(corners) == NUMBER_OF_OBSTACLES:
             break
 
+    # Conversion from pixels to mm
+    corners_mm = [np.array(shape) / conversion_factor for shape in corners]
+
+
+    # THYMIO
+    thymio = Thymio()
     thymio_pos_x, thymio_pos_y, thymio_theta = get_thymio_localisation(markers_data)
     goal_pos = get_goal_position(markers_data)
-    goal_pos[0] = -goal_pos[0]
+    if verbose:
+        print("Goal position: ", goal_pos)
+        print("Thymio position: ", thymio_pos_x, thymio_pos_y)
+        print("Conversion factor: ", conversion_factor)
 
-    # Global path planning
-    navigation = Navigation(corners, [thymio_pos_x, thymio_pos_y], goal_pos)
+
+    # GLOBAL NAVIGATION
+    global_goal = deepcopy(goal_pos)
+    global_obstacles = deepcopy(corners_mm)
+    navigation = Navigation(global_obstacles, [thymio_pos_x, thymio_pos_y], global_goal)
     global_path = navigation.get_shortest_path()
+    check_num = 0
+    drawing_path = deepcopy(global_path)
 
+    # Thymio position, orientation and goal setting
+    goal_pos[0] = -goal_pos[0]
     thymio.set_position(np.array([thymio_pos_x, thymio_pos_y]))
     thymio.set_orientation(thymio_theta)
+    thymio.set_goal(goal_pos)
+
 
     # create and initialize the Kalman filter
-    # u = thymio.get_wheels_speed()
-    ekf = KalmanFilterExtended(np.array([thymio_pos_x, thymio_pos_y, thymio_theta]), [0, 0])
+    u = thymio.get_wheels_speed()
+    ekf = KalmanFilterExtended(np.array([thymio_pos_x, thymio_pos_y, thymio_theta]), u)
 
+    # MAIN LOOP
     while not thymio.is_on_goal:
-    # while True:
-        # local navigation
-        # if np.any(thymio.get_horizontal_sensors() > thymio.OBSTACLE_THRESHOLD):
-        #     thymio.local_navigation()
+        # LOCAL NAVIGATION
+        if not thymio.is_kidnapped and np.any(thymio.get_horizontal_sensors() > thymio.OBSTACLE_THRESHOLD):
+            thymio.local_navigation()
 
         ### Detection and position of the markers (ROBOT and GOAL) ###
         ret, frame = vision.cam.read()
@@ -120,58 +165,53 @@ if __name__ == "__main__":
         edges = vision.detect_edges(frame_masked)                       # We detect the edges on the masked frame using Canny
         corners = vision.get_corners_and_shape_edges(edges)             # We obtain shapes and corners by approxPolyDP
 
-        frame_with_vectors, markers_data, marker_ids, conversion_factor = get_frame_with_vectors(vision, frame)
-        corners_mm = [np.array(shape) * 1/conversion_factor for shape in corners]
+        frame_with_vectors, markers_data, marker_ids, _ = get_frame_with_vectors(vision, frame)
+        corners_mm = [np.array(shape) / conversion_factor for shape in corners]
         frame_aruco_and_corners = frame_with_vectors.copy()
 
-        thymio_pos_x, thymio_pos_y, thymio_theta = get_thymio_localisation(markers_data)
-        thymio.set_position(np.array([thymio_pos_x, thymio_pos_y]))
-        thymio.set_orientation(thymio_theta)
+        # Draw obstacles and path
+        draw_obstacles(frame_aruco_and_corners, navigation, conversion_factor)
+        draw_path(frame_aruco_and_corners, drawing_path, conversion_factor)
 
-        # Visualize corners
-        for shape in corners:
-            for x, y in shape:
-                cv2.circle(frame_aruco_and_corners, (x, y), 3, (0, 255, 0), -1)
-
-        # Visualize graph nodes (extended obstacles vertices)
-        for shape in navigation.get_extended_obstacles():
-            for x, y in shape:
-                cv2.circle(frame_aruco_and_corners, (x, y), 5, (255, 0, 0), -1)
-
-        prev_point = global_path[0]
-        for point in global_path:
-            cv2.circle(frame_aruco_and_corners, (int(point.x), int(point.x)), 5, (0, 0, 255), -1)
-            # cv2.line(frame_aruco_and_corners, [int(prev_point.x), int(prev_point.y)], [int(point.x), int(point.y)], (255, 0, 0), 2)
-            prev_point = point
-
-        cv2.imshow("Main", frame_aruco_and_corners)
-
-        # print("Shapes:")
-        # for shape in init_corners:
-        #     print(len(shape))
-        
+        cv2.imshow("Main frame", frame_aruco_and_corners)
 
         ### Detection if camera is covered ###
         # We check if self.ARUCO_ROBOT_ID is in the detected markers
         camera_covered = vision.is_camera_covered(marker_ids)
-        # print(f"Robot not detected: {camera_covered} (ID robot = {vision.ARUCO_ROBOT_ID})")
+        if camera_covered:
+            print("Thymio is being kidnapped")
+            thymio.kidnap()
+            continue
 
         # Kalman filter
 
-        # movement
+        # THYMIO POSITION
         thymio_pos_x, thymio_pos_y, thymio_theta = get_thymio_localisation(markers_data)
+
+        # ACCOUNT FOR KIDNAPPING
+        if thymio.is_kidnapped:
+            thymio.recover()
+            navigation = Navigation(global_obstacles, [thymio_pos_x, thymio_pos_y], global_goal)
+            global_path = navigation.get_shortest_path()
+            drawing_path = deepcopy(global_path)
+            check_num = 0
+
         thymio_theta = (thymio_theta + 180) % 360
         thymio_pos_x = -thymio_pos_x
         thymio.set_position(np.array([thymio_pos_x, thymio_pos_y]))
         thymio.set_orientation(thymio_theta * np.pi / 180)
 
-        # thymio.plot_direction(goal_pos)
-        thymio.move_to_point(np.array(goal_pos))
-        print('\n')
+        # MOVEMENT
+        target = global_path[0]
+        if thymio.move_to_point(np.array([target.x * -1, target.y])):
+            print(f"Reached checkpoint {check_num}")
+            check_num += 1
+            global_path.pop(0)
 
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
 
     vision.release()
     thymio.stop()
+    thymio.__del__()
     print("Goal reached")

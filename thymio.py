@@ -20,30 +20,30 @@ class Thymio():
     LEDS_PROX_H = "leds.prox.h"
     LEDS_PROX_V = "leds.prox.v"
 
-    GOAL_THRESHOLD = 50
-    OBSTACLE_THRESHOLD = 1000
-    SCALE = 0.01
+    GOAL_THRESHOLD = 10
+    OBSTACLE_THRESHOLD = 1800
+    SCALE = 0.03
     SPEED = 50
+
+    W = np.array([[2, 1, -3, -1, -2], [-2, -1, -3, 1, 2]]) * SCALE
 
     goal = None
     position = None
     orientation = None
     is_on_goal = False
+    is_kidnapped = False
 
     K_RHO = 2
     K_ALPHA = 300
     K_BETA = -0.001
     WHEELBASE = 0.09
 
-    ONETURN = 16 # seconds
     ANGLE_THRESHOLD = 0.01
 
     def __init__(self):
         self.client = ClientAsync()
         self.node = aw(self.client.wait_for_node())
         aw(self.node.lock())
-
-        self.RAD_TURN = self.ONETURN / (2 * np.pi)
 
     def __del__(self):
         aw(self.node.unlock())
@@ -132,9 +132,7 @@ class Thymio():
         :return: True if no obstacles are detected
         """
         while np.any(self.get_horizontal_sensors() > self.OBSTACLE_THRESHOLD):
-            W = np.array([[2, 1, -1, -1, -2], [-2, -1, -1, 1, 2]]) * self.SCALE
-
-            motor_values = W @ self.get_horizontal_sensors().T + self.SPEED
+            motor_values = self.W @ self.get_horizontal_sensors().T + self.SPEED
             left_motor = int(motor_values[0])
             right_motor = int(motor_values[1])
 
@@ -146,7 +144,21 @@ class Thymio():
         """
         self.set_motors(0, 0)
 
-    def set_goal(self, goal: np.ndarray):
+    def kidnap(self):
+        """
+        Kidnaps the Thymio
+        """
+        self.is_kidnapped = True
+        self.stop()
+
+    def recover(self):
+        """
+        Recovers the Thymio from kidnapping
+        """
+        self.is_kidnapped = False
+        self.stop()
+
+    def set_goal(self, goal):
         """
         Sets the goal for the Thymio
         :param goal: goal position
@@ -167,41 +179,42 @@ class Thymio():
         """
         self.orientation = orientation
 
-    def move_to_point(self, target: np.ndarray):
+    def move_to_point(self, target: np.ndarray, verbose: bool = False):
         """
         Turn and move the Thymio towards the goal depending on the position and the next target
         :param target: next target position
+        :param verbose: whether to print status messages or not
         """
         path = target - self.position
 
         dst = np.sqrt(np.sum(np.square(path)))
-        print("Distance: ", dst)
 
         if dst <= self.GOAL_THRESHOLD:
-            self.is_on_goal = True
-            return
+            if np.sqrt(np.sum(np.square(self.position - self.goal))) <= self.GOAL_THRESHOLD:
+                self.is_on_goal = True
+
+            return True
 
         angle = self.orientation - np.arctan2(path[1], path[0])
 
         if angle > np.pi:
             angle = angle - 2 * np.pi
 
-        time_to_turn = max(abs(angle) * self.ONETURN / (2 * np.pi) - 1, 0)
-
-        print("Orientation: ", self.orientation)
-        print("Angle: ", angle)
-        print("Position: ", self.position)
-        print("Target: ", target)
-        print("Time to turn: ", time_to_turn)
+        if verbose:
+            print("Distance: ", dst)
+            print("Orientation: ", self.orientation)
+            print("Angle: ", angle)
+            print("Position: ", self.position)
+            print("Target: ", target)
 
         if angle > self.ANGLE_THRESHOLD:
             self.set_motors(self.SPEED, -self.SPEED)
-            # time.sleep(time_to_turn)
         elif angle < -self.ANGLE_THRESHOLD:
             self.set_motors(-self.SPEED, self.SPEED)
-            # time.sleep(time_to_turn)
 
         self.set_motors(self.SPEED, self.SPEED)
+
+        return False
 
     def move_to_point_astolfi(self, target: np.ndarray, verbose: bool = False):
         """
