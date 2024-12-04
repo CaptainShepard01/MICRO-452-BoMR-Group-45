@@ -122,6 +122,8 @@ def draw_confidence_ellipse(frame, P, mean, color=(0, 255, 255), confidence=0.95
 
 
 if __name__ == "__main__":
+    # out = cv2.VideoWriter('output.mp4', cv2.VideoWriter_fourcc(*'mp4v'), 20.0, (640, 480))
+
     # INITIALIZATION
     verbose = False
     NUMBER_OF_OBSTACLES = 3
@@ -242,6 +244,7 @@ if __name__ == "__main__":
 
         draw_confidence_ellipse(frame_aruco_and_corners, ekf.get_cov()[:2, :2], [x, y], color=(0, 255, 255))
 
+        # out.write(frame_aruco_and_corners)
         cv2.imshow("Main frame", frame_aruco_and_corners)
 
         # ACCOUNT FOR KIDNAPPING
@@ -277,6 +280,7 @@ if __name__ == "__main__":
             break
 
     vision.release()
+    # out.release()
     thymio.stop()
     thymio.__del__()
     print("Goal reached")

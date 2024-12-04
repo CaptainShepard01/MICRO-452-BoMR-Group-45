@@ -138,7 +138,7 @@ class Thymio():
 
             self.set_motors(left_motor, right_motor)
 
-        time.sleep(1)
+        time.sleep(0.2)
 
     def stop(self):
         """
