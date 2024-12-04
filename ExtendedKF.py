@@ -30,20 +30,24 @@ class KalmanFilterExtended:
         theta = self.x[2]
         vf = (self.x[3] + self.x[4]) / 2
         wheel_base = 100 # mm
+        dtheta = (self.x[4] - self.x[3]) / wheel_base
+        
         coS = np.cos(theta)
         siN = np.sin(theta)
 
         f = np.array([
-            [1, 0, 0, - 0.5 * coS * dt, - 0.5 * coS * dt],
-            [0, 1, 0, 0.5 * siN * dt, 0.5 * siN * dt],
-            [0, 0, 1, - 0.5 * dt / wheel_base, 0.5 * dt / wheel_base],
-            [0, 0, 0, 1, 0],
-            [0, 0, 0, 0, 1]])
+            self.x[0] + vf * coS * dt,                  
+            self.x[1] + vf * siN * dt,                  
+            theta + dtheta * dt,                    
+            self.x[3],                       
+            self.x[4]                       
+            ])
+        
 
         F = np.array([
-            [1, 0, vf * siN * dt, - 0.5 * coS * dt, - 0.5 * coS * dt],
+            [1, 0, -vf * siN * dt, 0.5 * coS * dt, 0.5 * coS * dt],
             [0, 1, vf * coS * dt, 0.5 * siN * dt, 0.5 * siN * dt],
-            [0, 0, 1, - 0.5 * dt / wheel_base, 0.5 * dt / wheel_base],
+            [0, 0, 1, - dt / wheel_base, dt / wheel_base],
             [0, 0, 0, 1, 0],
             [0, 0, 0, 0, 1]])
         
@@ -51,13 +55,13 @@ class KalmanFilterExtended:
     
     def prediction(self, dt):
         f, F = self.compute_fnF(dt)
-        self.x = f @ self.x
+        self.x = f
         self.P = F @ self.P @ F.T + self.Q
 
         # self.P = 0.5 * (self.P + self.P.T)
         # self.P += np.eye(self.P.shape[0]) * 1e-6
     
-    def update(self, z, cam, learning_rate=0.1):
+    def update(self, z, cam):
         if cam:
             R = self.R_cam
             H = self.H_cam
