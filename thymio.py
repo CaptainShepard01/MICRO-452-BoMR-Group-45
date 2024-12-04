@@ -42,8 +42,6 @@ class Thymio():
         self.node = aw(self.client.wait_for_node())
         aw(self.node.lock())
 
-        self.RAD_TURN = self.ONETURN / (2 * np.pi)
-
     def __del__(self):
         aw(self.node.unlock())
 
