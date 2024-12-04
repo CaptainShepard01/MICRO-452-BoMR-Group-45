@@ -148,9 +148,9 @@ if __name__ == "__main__":
 
     # MAIN LOOP
     while not thymio.is_on_goal:
-        # local navigation
-        # if np.any(thymio.get_horizontal_sensors() > thymio.OBSTACLE_THRESHOLD):
-        #     thymio.local_navigation()
+        # LOCAL NAVIGATION
+        if np.any(thymio.get_horizontal_sensors() > thymio.OBSTACLE_THRESHOLD):
+            thymio.local_navigation()
 
         ### Detection and position of the markers (ROBOT and GOAL) ###
         ret, frame = vision.cam.read()
