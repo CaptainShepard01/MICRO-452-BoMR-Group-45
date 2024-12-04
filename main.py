@@ -185,10 +185,10 @@ if __name__ == "__main__":
 
         # Kalman filter
 
-        # movement
+        # THYMIO POSITION
         thymio_pos_x, thymio_pos_y, thymio_theta = get_thymio_localisation(markers_data)
-        # Updating orientation and position to account for inversion and turn angle
 
+        # ACCOUNT FOR KIDNAPPING
         if thymio.is_kidnapped:
             thymio.recover()
             navigation = Navigation(global_obstacles, [thymio_pos_x, thymio_pos_y], global_goal)
@@ -201,6 +201,7 @@ if __name__ == "__main__":
         thymio.set_position(np.array([thymio_pos_x, thymio_pos_y]))
         thymio.set_orientation(thymio_theta * np.pi / 180)
 
+        # MOVEMENT
         target = global_path[0]
         if thymio.move_to_point(np.array([target.x * -1, target.y])):
             print(f"Reached checkpoint {check_num}")
