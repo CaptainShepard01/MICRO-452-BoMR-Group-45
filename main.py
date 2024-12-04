@@ -130,7 +130,9 @@ if __name__ == "__main__":
 
 
     # GLOBAL NAVIGATION
-    navigation = Navigation(corners_mm, [thymio_pos_x, thymio_pos_y], goal_pos)
+    global_goal = deepcopy(goal_pos)
+    global_obstacles = deepcopy(corners_mm)
+    navigation = Navigation(global_obstacles, [thymio_pos_x, thymio_pos_y], global_goal)
     global_path = navigation.get_shortest_path()
     check_num = 0
     drawing_path = deepcopy(global_path)
@@ -149,7 +151,7 @@ if __name__ == "__main__":
     # MAIN LOOP
     while not thymio.is_on_goal:
         # LOCAL NAVIGATION
-        if np.any(thymio.get_horizontal_sensors() > thymio.OBSTACLE_THRESHOLD):
+        if not thymio.is_kidnapped and np.any(thymio.get_horizontal_sensors() > thymio.OBSTACLE_THRESHOLD):
             thymio.local_navigation()
 
         ### Detection and position of the markers (ROBOT and GOAL) ###
@@ -177,7 +179,8 @@ if __name__ == "__main__":
         # We check if self.ARUCO_ROBOT_ID is in the detected markers
         camera_covered = vision.is_camera_covered(marker_ids)
         if camera_covered:
-            print(f"Robot not detected! (ID robot = {vision.ARUCO_ROBOT_ID})")
+            print("Thymio is being kidnapped")
+            thymio.kidnap()
             continue
 
         # Kalman filter
@@ -185,6 +188,14 @@ if __name__ == "__main__":
         # movement
         thymio_pos_x, thymio_pos_y, thymio_theta = get_thymio_localisation(markers_data)
         # Updating orientation and position to account for inversion and turn angle
+
+        if thymio.is_kidnapped:
+            thymio.recover()
+            navigation = Navigation(global_obstacles, [thymio_pos_x, thymio_pos_y], global_goal)
+            global_path = navigation.get_shortest_path()
+            drawing_path = deepcopy(global_path)
+            check_num = 0
+
         thymio_theta = (thymio_theta + 180) % 360
         thymio_pos_x = -thymio_pos_x
         thymio.set_position(np.array([thymio_pos_x, thymio_pos_y]))

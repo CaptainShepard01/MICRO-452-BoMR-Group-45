@@ -31,6 +31,7 @@ class Thymio():
     position = None
     orientation = None
     is_on_goal = False
+    is_kidnapped = False
 
     K_RHO = 2
     K_ALPHA = 300
@@ -142,6 +143,20 @@ class Thymio():
         Stops the Thymio
         """
         self.set_motors(0, 0)
+
+    def kidnap(self):
+        """
+        Kidnaps the Thymio
+        """
+        self.is_kidnapped = True
+        self.stop()
+
+    def recover(self):
+        """
+        Recovers the Thymio from kidnapping
+        """
+        self.is_kidnapped = False
+        self.stop()
 
     def set_goal(self, goal):
         """
