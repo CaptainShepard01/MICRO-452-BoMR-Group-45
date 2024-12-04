@@ -78,6 +78,7 @@ if __name__ == "__main__":
 
         frame_masked = vision.apply_color_mask(frame,
                                                mask_color='r')  # We apply a red mask to detect only red obstacles
+        frame_with_vectors, markers_data, marker_ids, conversion_factor = get_frame_with_vectors(vision, frame)
         edges = vision.detect_edges(frame_masked)  # We detect the edges on the masked frame using Canny
         corners = vision.get_corners_and_shape_edges(edges)  # We obtain shapes and corners by approxPolyDP
         corners_mm = [np.array(shape) * 1/conversion_factor for shape in corners]
@@ -87,13 +88,13 @@ if __name__ == "__main__":
         if len(corners) == 5:
             break
 
-    frame_with_vectors, markers_data, marker_ids = get_frame_with_vectors(vision, frame)
     thymio_pos_x, thymio_pos_y, thymio_theta = get_thymio_localisation(markers_data)
     goal_pos = get_goal_position(markers_data)
+    goal_pos[0] = -goal_pos[0]
 
     # Global path planning
-    # navigation = Navigation(corners, [thymio_pos_x, thymio_pos_y], goal_pos)
-    # global_path = navigation.get_shortest_path()
+    navigation = Navigation(corners, [thymio_pos_x, thymio_pos_y], goal_pos)
+    global_path = navigation.get_shortest_path()
 
     thymio.set_position(np.array([thymio_pos_x, thymio_pos_y]))
     thymio.set_orientation(thymio_theta)
@@ -118,9 +119,9 @@ if __name__ == "__main__":
         frame_masked = vision.apply_color_mask(frame, mask_color='r')   # We apply a red mask to detect only red obstacles
         edges = vision.detect_edges(frame_masked)                       # We detect the edges on the masked frame using Canny
         corners = vision.get_corners_and_shape_edges(edges)             # We obtain shapes and corners by approxPolyDP
-        corners_mm = [np.array(shape) * 1/conversion_factor for shape in corners]
 
-        frame_with_vectors, markers_data, marker_ids = get_frame_with_vectors(vision, frame)
+        frame_with_vectors, markers_data, marker_ids, conversion_factor = get_frame_with_vectors(vision, frame)
+        corners_mm = [np.array(shape) * 1/conversion_factor for shape in corners]
         frame_aruco_and_corners = frame_with_vectors.copy()
 
         thymio_pos_x, thymio_pos_y, thymio_theta = get_thymio_localisation(markers_data)
@@ -132,11 +133,11 @@ if __name__ == "__main__":
             for x, y in shape:
                 cv2.circle(frame_aruco_and_corners, (x, y), 3, (0, 255, 0), -1)
 
-        # prev_point = global_path[0]
-        # for point in global_path:
-        #     cv2.circle(frame_aruco_and_corners, (int(point.x), int(point.x)), 5, (0, 0, 255), -1)
-        #     # cv2.line(frame_aruco_and_corners, [int(prev_point.x), int(prev_point.y)], [int(point.x), int(point.y)], (255, 0, 0), 2)
-        #     prev_point = point
+        prev_point = global_path[0]
+        for point in global_path:
+            cv2.circle(frame_aruco_and_corners, (int(point.x), int(point.x)), 5, (0, 0, 255), -1)
+            # cv2.line(frame_aruco_and_corners, [int(prev_point.x), int(prev_point.y)], [int(point.x), int(point.y)], (255, 0, 0), 2)
+            prev_point = point
 
         cv2.imshow("Main", frame_aruco_and_corners)
 
@@ -153,7 +154,15 @@ if __name__ == "__main__":
         # Kalman filter
 
         # movement
-        thymio.move_to_point_astolfi(np.array(goal_pos))
+        thymio_pos_x, thymio_pos_y, thymio_theta = get_thymio_localisation(markers_data)
+        thymio_theta = (thymio_theta + 180) % 360
+        thymio_pos_x = -thymio_pos_x
+        thymio.set_position(np.array([thymio_pos_x, thymio_pos_y]))
+        thymio.set_orientation(thymio_theta * np.pi / 180)
+
+        # thymio.plot_direction(goal_pos)
+        thymio.move_to_point(np.array(goal_pos))
+        print('\n')
 
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
