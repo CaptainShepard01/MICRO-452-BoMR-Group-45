@@ -1,5 +1,7 @@
 import math
+import os
 from copy import deepcopy
+import sys
 
 import cv2
 import numpy as np
@@ -158,7 +160,11 @@ if __name__ == "__main__":
 
     # INITIALIZATION
     verbose = False
-    NUMBER_OF_OBSTACLES = 6
+    NUMBER_OF_OBSTACLES = int(sys.argv[1])
+
+    if NUMBER_OF_OBSTACLES < 0:
+        print("Please provide a number of obstacles greater than 0")
+        os.close(0)
 
 
     # COMPUTER VISION
@@ -186,8 +192,7 @@ if __name__ == "__main__":
     corners_mm = [np.array(shape) / conversion_factor for shape in corners]
 
 
-    # THYMIO
-    thymio = Thymio()
+    # MARKERS
     thymio_pos_x, thymio_pos_y, thymio_theta = get_thymio_localisation(markers_data)
     goal_pos = get_goal_position(markers_data)
     if verbose:
@@ -205,6 +210,9 @@ if __name__ == "__main__":
     drawing_path = deepcopy(global_path)
 
     # Thymio goal setting
+    thymio = Thymio()
+    thymio.set_position(np.array([thymio_pos_x * -1, thymio_pos_y]))
+    thymio.set_orientation(((thymio_theta + 180) % 360) * np.pi / 180)
     goal_pos[0] = -goal_pos[0]
     thymio.set_goal(goal_pos)
 
