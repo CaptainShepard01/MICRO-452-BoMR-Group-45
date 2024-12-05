@@ -156,7 +156,7 @@ def draw_ekf(frame, measured_state, conversion_factor, P, theta):
 
 
 if __name__ == "__main__":
-    out = cv2.VideoWriter('output.mp4', cv2.VideoWriter_fourcc(*'mp4v'), 10.0, (1920, 1080))
+    # out = cv2.VideoWriter('output.mp4', cv2.VideoWriter_fourcc(*'mp4v'), 10.0, (1920, 1080))
 
     # INITIALIZATION
     verbose = False
@@ -281,7 +281,7 @@ if __name__ == "__main__":
 
         draw_ekf(frame_aruco_and_corners, measured_state, conversion_factor, ekf.get_cov()[:2, :2], thymio_theta)
 
-        out.write(cv2.resize(frame_aruco_and_corners, (1920, 1080)))
+        # out.write(cv2.resize(frame_aruco_and_corners, (1920, 1080)))
         cv2.imshow("Main frame", cv2.resize(frame_aruco_and_corners, (1920//2, 1080//2)))
 
         # ACCOUNT FOR KIDNAPPING
@@ -316,7 +316,7 @@ if __name__ == "__main__":
             break
 
     vision.release()
-    out.release()
+    # out.release()
     thymio.stop()
     thymio.__del__()
     print("Goal reached")
