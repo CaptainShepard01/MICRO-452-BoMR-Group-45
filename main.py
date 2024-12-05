@@ -113,7 +113,7 @@ def draw_ekf(frame, measured_state, conversion_factor, P, theta):
     eigenvectors = eigenvectors[:, order]
 
     # Calculate the angle of the ellipse in degrees
-    angle = theta
+    angle = np.degrees(np.arctan2(eigenvectors[1, 0], eigenvectors[0, 0]))
 
     # Calculate the axis lengths (scaled by confidence)
     chi_squared_val = np.sqrt(5.991)  # 95% confidence level for 2D
