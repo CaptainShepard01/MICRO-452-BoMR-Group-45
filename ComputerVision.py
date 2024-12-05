@@ -55,6 +55,8 @@ class ComputerVision:
         """
 
         cam = cv2.VideoCapture(camera_index, cv2.CAP_DSHOW)
+        cam.set(cv2.CAP_PROP_FRAME_WIDTH, 1920)
+        cam.set(cv2.CAP_PROP_FRAME_HEIGHT, 1080)
         if not cam.isOpened():
             raise Exception("Camera not accessible")
         return cam

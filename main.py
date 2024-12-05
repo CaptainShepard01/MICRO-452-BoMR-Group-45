@@ -88,16 +88,22 @@ def draw_path(frame, path, conversion_factor):
         x_prev, y_prev = x, y
 
 
-def draw_confidence_ellipse(frame, P, mean, color=(0, 255, 255), confidence=0.95):
+def draw_ekf(frame, measured_state, conversion_factor, P, theta):
     """
-    Draw a confidence ellipse based on the covariance matrix P on an image.
+    Draw the ellipse representing the confidence of the Kalman filter
+    :param frame: frame to draw on
+    :param measured_state: state of the Kalman filter
+    :param conversion_factor: conversion factor from pixels to mm
+    :param P: covariance matrix
+    """
 
-    Parameters:
-        P (np.ndarray): 2x2 covariance matrix for position.
-        image (np.ndarray): Image to draw the ellipse on.
-        color (tuple): Color of the ellipse.
-        confidence (float): Confidence level (default 0.95 for 95%).
-    """
+    x = int(round(measured_state[0] * -1 * conversion_factor))
+    y = int(round(measured_state[1] * conversion_factor))
+    cv2.circle(frame_aruco_and_corners, (x, y), 5, (255, 255, 0), -1)
+
+    mean = [x, y]
+
+
     # Extract eigenvalues and eigenvectors
     eigenvalues, eigenvectors = np.linalg.eigh(P)
 
@@ -107,7 +113,7 @@ def draw_confidence_ellipse(frame, P, mean, color=(0, 255, 255), confidence=0.95
     eigenvectors = eigenvectors[:, order]
 
     # Calculate the angle of the ellipse in degrees
-    angle = np.degrees(np.arctan2(eigenvectors[1, 0], eigenvectors[0, 0]))
+    angle = theta
 
     # Calculate the axis lengths (scaled by confidence)
     chi_squared_val = np.sqrt(5.991)  # 95% confidence level for 2D
@@ -118,7 +124,7 @@ def draw_confidence_ellipse(frame, P, mean, color=(0, 255, 255), confidence=0.95
     # Draw the ellipse
     center = (int(mean[0]), int(mean[1]))
     axes = (int(major_axis), int(minor_axis))
-    cv2.ellipse(frame, center, axes, angle, 0, 360, color, 2)
+    cv2.ellipse(frame, center, axes, angle, 0, 360, (0, 255, 255), 2)
 
 
 if __name__ == "__main__":
@@ -126,7 +132,7 @@ if __name__ == "__main__":
 
     # INITIALIZATION
     verbose = False
-    NUMBER_OF_OBSTACLES = 3
+    NUMBER_OF_OBSTACLES = 4
 
 
     # COMPUTER VISION
@@ -178,7 +184,7 @@ if __name__ == "__main__":
 
     # create and initialize the Kalman filter
     u = thymio.get_wheels_speed()
-    ekf = KalmanFilterExtended(np.array([thymio_pos_x * -1, thymio_pos_y, thymio_theta]), u)
+    ekf = KalmanFilterExtended(np.array([thymio_pos_x * -1, thymio_pos_y, ((thymio_theta + 180) % 360) * np.pi / 180]), u)
     camera = True
 
     # MAIN LOOP
@@ -215,7 +221,7 @@ if __name__ == "__main__":
                 print("Camera is covered!")
                 camera = False
             else:
-                print("Thymio is being kidnapped")
+                print("Thymio is being kidnapped (marker not detected)")
                 thymio.kidnap()
                 continue
         else:
@@ -234,18 +240,15 @@ if __name__ == "__main__":
         u = thymio.get_wheels_speed()
         theta = ((thymio_theta + 180) % 360) * np.pi / 180
 
-        measured_state = run_EKF(ekf, thymio_pos_x * -1, thymio_pos_y, theta, u, cam=camera)
+        measured_state, kidnap = run_EKF(ekf, thymio_pos_x * -1, thymio_pos_y, theta, u, cam=camera)
 
-        x = int(round(measured_state[0] * -1 * conversion_factor))
-        y = int(round(measured_state[1] * conversion_factor))
-        cv2.circle(frame_aruco_and_corners, (x, y), 5, (255, 255, 0), -1)
+        if not thymio.is_kidnapped and kidnap:
+            thymio.kidnap()
 
-        # cv2.ellipse(frame_aruco_and_corners, (x, y), (major_axis, minor_axis), theta, 0, 360, (0, 255, 255), 2)
-
-        draw_confidence_ellipse(frame_aruco_and_corners, ekf.get_cov()[:2, :2], [x, y], color=(0, 255, 255))
+        draw_ekf(frame_aruco_and_corners, measured_state, conversion_factor, ekf.get_cov()[:2, :2], thymio_theta)
 
         # out.write(frame_aruco_and_corners)
-        cv2.imshow("Main frame", frame_aruco_and_corners)
+        cv2.imshow("Main frame", cv2.resize(frame_aruco_and_corners, (1920//2, 1080//2)))
 
         # ACCOUNT FOR KIDNAPPING
         if thymio.is_kidnapped:
@@ -256,8 +259,7 @@ if __name__ == "__main__":
             check_num = 0
 
             u = thymio.get_wheels_speed()
-            ekf = KalmanFilterExtended(np.array([thymio_pos_x * -1, thymio_pos_y, thymio_theta]), u)
-            camera = True
+            ekf = KalmanFilterExtended(np.array([thymio_pos_x * -1, thymio_pos_y, ((thymio_theta + 180) % 360) * np.pi / 180]), u)
 
         if camera:
             thymio_theta = ((thymio_theta + 180) % 360) * np.pi / 180

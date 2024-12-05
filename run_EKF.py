@@ -41,18 +41,22 @@ def run_EKF(ekf, pos_x, pos_y, theta, u, dt = None, cam = True, ax = None):
     measured_state = ekf.get_state()
     
     if cam:
-        pos_prev = np.array([measured_state[0], measured_state[1]]), 
-        angle_prev = measured_state[2]
-        dpos = abs(np.array([pos_x, pos_y]) - pos_prev)
-        #dpos = np.linalg.norm(np.array([pos_x, pos_y]) - pos_prev)  #Euclidean distance
-        dtheta = abs(theta - angle_prev)
-        
-        # if dpos > const.KN_DIST or dtheta > const.KN_THETA:
-        #     kidnap = True
-        #     print('... Thymio is being kidnapped ...')
-        #     cur_t = time.time()
-        #     ekf.count_time(cur_t)
-        #     ekf.get_state()
+        pos_prev = np.array([measured_state[0], measured_state[1]])
+        if pos_prev is not None:
+            angle_prev = measured_state[2]
+            dpos = np.sqrt((pos_x - pos_prev[0])**2 + (pos_y - pos_prev[1])**2)
+            dtheta = abs(theta - angle_prev)
+
+            if dpos > const.KN_DIST or dtheta > const.KN_THETA:
+                kidnap = True
+                print("Thymio is being kidnapped (moved too far or rotated too much)")
+                cur_t = time.time()
+                ekf.count_time(cur_t)
+                ekf.get_state()
+            else:
+                kidnap = False
+    else:
+        kidnap = False
 
     ekf.update([pos_x, pos_y, theta], u, cam)
     measurement_update = ekf.get_state()
@@ -60,4 +64,4 @@ def run_EKF(ekf, pos_x, pos_y, theta, u, dt = None, cam = True, ax = None):
     if ax is not None:
         confidence_ellipse(ekf.get_cov(), measurement_update, ax)
 
-    return measurement_update
+    return measurement_update, kidnap
