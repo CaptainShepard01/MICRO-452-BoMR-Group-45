@@ -25,7 +25,7 @@ class ComputerVision:
     @staticmethod
     def initialize_camera_parameters():
         """
-        Initialize camera matrix and distortion coefficients. --- FROM FILE FOR THE REAL USE
+        Initialize camera matrix and distortion coefficients.
         
         Returns:   
             mtx: camera matrix
@@ -147,23 +147,14 @@ class ComputerVision:
         Takes a frame as input, detects ArUco markers using the specified dictionary and parameters, 
         and estimates the pose of the detected markers using the camera matrix (mtx)
         
-        :param original_frame: input frame/image where you want to detect ArUco markers and estimate
-        their pose. 
-        :param aruco_dict: dictionary containing the predefined markers that will be used for detection.
-        These dictionaries define the marker size, border bits, and other properties necessary for marker
-        detection and decoding.
-        :param aruco_params: contains various parameters for the ArUco marker detection algorithm. These
-        parameters can include values such as the detection mode, corner refinement method, minimum marker
-        size, etc
-        :param mtx: camera matrix which contains intrinsic parameters of the camera obtained by calibration.
-        :param dst: distortion coefficients of the camera obtained by calibration.
+        :param frame: input frame where you want to detect ArUco markers and estimate their pose.
 
         :return:
         1. frame_with_markers: The original frame with detected ArUco markers drawn on it.
         2. marker_ids: The IDs of the detected ArUco markers.
         3. rvecs: The rotation vectors estimated for each detected marker.
         4. tvecs: The translation vectors estimated for each detected marker.
-        5. aruco_side_pixels
+        5. aruco_diagonal_pixels: length of the diagonal of an ArUco marker in pixels (used to convert px to mm)
         """
 
         frame_with_markers = frame.copy()
@@ -191,12 +182,14 @@ class ComputerVision:
         """
         Process pose information for each detected marker and draw on a copy of the original frame.
 
-        original_frame: The frame to process
-        marker_ids, rvecs, tvecs: Detected marker details
-        mtx, dst: Camera matrix and distortion coefficients
+        :param frame: Frame where we want to add the vectors of markers
+        :param marker_ids: Detected marker IDs
+        :param rvecs: Rotation vectors of detected markers
+        :param tvecs: Translation vectors of detected markers
 
-        Returns:
+        :return:
             frame_with_vectors: A new frame with the vectors drawn
+            markers_data: Data about the markers (ID, x-position, y-position, yaw-angle)
         """
 
         frame_with_vectors = frame.copy()
@@ -216,7 +209,7 @@ class ComputerVision:
 
             roll_x = math.degrees(roll_x)
             pitch_y = math.degrees(pitch_y)
-            yaw_z = -(math.degrees(yaw_z)-90)
+            yaw_z = -(math.degrees(yaw_z)-90)  # To have the correct orientation and clockwise angle
 
             markers_data.extend([[marker_id[0], transform_translation_x, transform_translation_y, yaw_z]])
 
@@ -232,7 +225,8 @@ class ComputerVision:
         and return a list of corners for each detected shape.
 
         :param edges: Edge-detected image (binary format, result of cv2.Canny).
-        :return: List of corners for each shape in the format [[[x1, y1], [x2, y2], ...], ...].
+        :return:
+            all_corners: List of corners for each shape in the format [[[x1, y1], [x2, y2], ...], ...].
         """
 
         contours, _ = cv2.findContours(edges, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
