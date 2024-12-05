@@ -1,11 +1,8 @@
 import math
-import os
 from copy import deepcopy
-import time
 
 import cv2
 import numpy as np
-from win32comext.adsi.demos.scp import verbose
 
 from run_EKF import run_EKF
 from thymio import Thymio
@@ -15,6 +12,11 @@ from global_navigation import Navigation
 
 
 def get_frame_with_vectors(vision, frame):
+    """
+    Get the frame with the markers and vectors
+    :param vision: vision object
+    :param frame: frame to process
+    """
     frame_with_markers, marker_ids, rvecs, tvecs, aruco_diagonal_pixels = vision.detect_and_estimate_pose(frame)
 
     # Will contain ID, x, y, angle of each detected marker
@@ -32,6 +34,10 @@ def get_frame_with_vectors(vision, frame):
 
 
 def get_thymio_localisation(markers_data):
+    """
+    Get the position and orientation of the Thymio
+    :param markers_data: data of the detected markers
+    """
     thymio_pos_x, thymio_pos_y, thymio_theta = None, None, None
 
     for marker in markers_data:
@@ -43,6 +49,10 @@ def get_thymio_localisation(markers_data):
 
 
 def get_goal_position(markers_data):
+    """
+    Get the position of the goal
+    :param markers_data: data of the detected markers
+    """
     goal_pos = None
 
     for marker in markers_data:
@@ -54,10 +64,20 @@ def get_goal_position(markers_data):
 
 
 def convert_2_pixels(coordinates, conversion_factor):
+    """
+    Convert coordinates from mm to pixels
+    :param coordinates: coordinates in mm
+    :param conversion_factor: conversion factor from pixels to mm
+    """
     return int(round(coordinates[0] * conversion_factor)), int(round(coordinates[1] * conversion_factor))
 
 
 def draw_obstacles(frame, navigation, conversion_factor):
+    """
+    Draw the obstacles on the frame
+    :param frame: frame to draw on
+    :param navigation: navigation object
+    """
     for shape in navigation.obstacles:
         for x, y in shape:
             x, y = convert_2_pixels((x, y), conversion_factor)
@@ -70,6 +90,12 @@ def draw_obstacles(frame, navigation, conversion_factor):
 
 
 def draw_path(frame, path, conversion_factor):
+    """
+    Draw the path on the frame
+    :param frame: frame to draw on
+    :param path: path to draw
+    :param conversion_factor: conversion factor from pixels to mm
+    """
     prev_point = path[0]
 
     x_prev, y_prev = convert_2_pixels((prev_point.x, prev_point.y), conversion_factor)
@@ -132,7 +158,7 @@ if __name__ == "__main__":
 
     # INITIALIZATION
     verbose = False
-    NUMBER_OF_OBSTACLES = 4
+    NUMBER_OF_OBSTACLES = 6
 
 
     # COMPUTER VISION

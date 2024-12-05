@@ -22,12 +22,13 @@ class Thymio():
 
     GOAL_THRESHOLD = 20
     OBSTACLE_THRESHOLD = 1800
+    ANGLE_THRESHOLD = 0.01
+
     SCALE = 0.03
     SPEED = 70
 
     W = np.array([[2, 1, -4, -1, -2], [-2, -1, -2, 1, 2]]) * SCALE
 
-    ANGLE_THRESHOLD = 0.01
     SHARP_TURN_THRESHOLD = np.pi / 6
 
     def __init__(self):
@@ -128,13 +129,14 @@ class Thymio():
         :return: True if no obstacles are detected
         """
         while np.any(self.get_horizontal_sensors() > self.OBSTACLE_THRESHOLD):
-            motor_values = self.W @ self.get_horizontal_sensors().T + self.SPEED
+            motor_values = self.W @ self.get_horizontal_sensors().T
             left_motor = int(motor_values[0])
             right_motor = int(motor_values[1])
 
             self.set_motors(left_motor, right_motor)
 
-        time.sleep(0.2)
+        self.set_motors(self.SPEED, self.SPEED)
+        time.sleep(1)
 
     def stop(self):
         """
