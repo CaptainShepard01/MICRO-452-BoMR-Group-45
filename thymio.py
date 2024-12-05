@@ -12,14 +12,6 @@ class Thymio():
     SPEED_LEFT = "motor.left.speed"
     SPEED_RIGHT = "motor.right.speed"
 
-    LEDS_TOP = "leds.top"
-    LEDS_BOTTOM_LEFT = "leds.bottom.left"
-    LEDS_BOTTOM_RIGHT = "leds.bottom.right"
-    LEDS_RC = "leds.rc"
-    LEDS_TEMPERATURE = "leds.temperature"
-    LEDS_PROX_H = "leds.prox.h"
-    LEDS_PROX_V = "leds.prox.v"
-
     GOAL_THRESHOLD = 20
     OBSTACLE_THRESHOLD = 1800
     ANGLE_THRESHOLD = 0.01
@@ -44,30 +36,6 @@ class Thymio():
 
     def __del__(self):
         aw(self.node.unlock())
-
-    def set_leds(self, leds: list, led_type: str):
-        """
-        Sets the LEDs of the Thymio
-
-        :param leds: list of LED values
-        :param led_type: type of LEDs to set
-        """
-        aw(self.node.set_variables({
-            led_type: leds
-        }))
-
-    def reset_leds(self):
-        """
-        Resets the LEDs of the Thymio to 0
-        """
-
-        self.set_leds([0, 0, 0], self.LEDS_TOP)
-        self.set_leds([0, 0, 0], self.LEDS_BOTTOM_LEFT)
-        self.set_leds([0, 0, 0], self.LEDS_BOTTOM_RIGHT)
-        self.set_leds([0], self.LEDS_RC)
-        self.set_leds([0, 0], self.LEDS_TEMPERATURE)
-        self.set_leds([0, 0, 0, 0, 0, 0, 0, 0], self.LEDS_PROX_H)
-        self.set_leds([0, 0], self.LEDS_PROX_V)
 
     def set_motors(self, left_motor: int, right_motor: int, verbose: bool = False):
         """
