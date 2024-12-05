@@ -7,6 +7,7 @@ import cv2
 import numpy as np
 from win32comext.adsi.demos.scp import verbose
 
+from run_EKF import run_EKF
 from thymio import Thymio
 from ComputerVision import ComputerVision
 from ExtendedKF import KalmanFilterExtended
@@ -52,31 +53,31 @@ def get_goal_position(markers_data):
     return goal_pos
 
 
+def convert_2_pixels(coordinates, conversion_factor):
+    return int(round(coordinates[0] * conversion_factor)), int(round(coordinates[1] * conversion_factor))
+
+
 def draw_obstacles(frame, navigation, conversion_factor):
     for shape in navigation.obstacles:
         for x, y in shape:
-            x = int(x * conversion_factor)
-            y = int(y * conversion_factor)
+            x, y = convert_2_pixels((x, y), conversion_factor)
             cv2.circle(frame, (x, y), 5, (0, 255, 0), -1)
 
     for shape in navigation.get_extended_obstacles():
         for x, y in shape:
-            x = int(x * conversion_factor)
-            y = int(y * conversion_factor)
+            x, y = convert_2_pixels((x, y), conversion_factor)
             cv2.circle(frame, (x, y), 5, (255, 0, 0), -1)
 
 
 def draw_path(frame, path, conversion_factor):
     prev_point = path[0]
 
-    x_prev = int(prev_point.x * conversion_factor)
-    y_prev = int(prev_point.y * conversion_factor)
+    x_prev, y_prev = convert_2_pixels((prev_point.x, prev_point.y), conversion_factor)
     # First point
     cv2.circle(frame, (int(prev_point.x * conversion_factor), int(prev_point.y * conversion_factor)), 5, (0, 0, 255), -1)
 
     for point in path[1:]:
-        x = int(point.x * conversion_factor)
-        y = int(point.y * conversion_factor)
+        x, y = convert_2_pixels((point.x, point.y), conversion_factor)
 
         # Line from point to point
         cv2.line(frame, (x_prev, y_prev), (x, y), (0, 0, 255), 2)
@@ -84,14 +85,54 @@ def draw_path(frame, path, conversion_factor):
         cv2.circle(frame, (x, y), 5, (0, 0, 255), -1)
 
         prev_point = point
-        x_prev = int(prev_point.x * conversion_factor)
-        y_prev = int(prev_point.y * conversion_factor)
+        x_prev, y_prev = x, y
+
+
+def draw_ekf(frame, measured_state, conversion_factor, P, theta):
+    """
+    Draw the ellipse representing the confidence of the Kalman filter
+    :param frame: frame to draw on
+    :param measured_state: state of the Kalman filter
+    :param conversion_factor: conversion factor from pixels to mm
+    :param P: covariance matrix
+    """
+
+    x = int(round(measured_state[0] * -1 * conversion_factor))
+    y = int(round(measured_state[1] * conversion_factor))
+    cv2.circle(frame_aruco_and_corners, (x, y), 5, (255, 255, 0), -1)
+
+    mean = [x, y]
+
+
+    # Extract eigenvalues and eigenvectors
+    eigenvalues, eigenvectors = np.linalg.eigh(P)
+
+    # Sort eigenvalues (largest first) and corresponding eigenvectors
+    order = np.argsort(eigenvalues)[::-1]
+    eigenvalues = eigenvalues[order]
+    eigenvectors = eigenvectors[:, order]
+
+    # Calculate the angle of the ellipse in degrees
+    angle = np.degrees(np.arctan2(eigenvectors[1, 0], eigenvectors[0, 0]))
+
+    # Calculate the axis lengths (scaled by confidence)
+    chi_squared_val = np.sqrt(5.991)  # 95% confidence level for 2D
+    amplification = 1
+    major_axis = chi_squared_val * np.sqrt(eigenvalues[0]) * amplification
+    minor_axis = chi_squared_val * np.sqrt(eigenvalues[1]) * amplification
+
+    # Draw the ellipse
+    center = (int(mean[0]), int(mean[1]))
+    axes = (int(major_axis), int(minor_axis))
+    cv2.ellipse(frame, center, axes, angle, 0, 360, (0, 255, 255), 2)
 
 
 if __name__ == "__main__":
+    # out = cv2.VideoWriter('output.mp4', cv2.VideoWriter_fourcc(*'mp4v'), 20.0, (640, 480))
+
     # INITIALIZATION
     verbose = False
-    NUMBER_OF_OBSTACLES = 3
+    NUMBER_OF_OBSTACLES = 4
 
 
     # COMPUTER VISION
@@ -137,16 +178,14 @@ if __name__ == "__main__":
     check_num = 0
     drawing_path = deepcopy(global_path)
 
-    # Thymio position, orientation and goal setting
+    # Thymio goal setting
     goal_pos[0] = -goal_pos[0]
-    thymio.set_position(np.array([thymio_pos_x, thymio_pos_y]))
-    thymio.set_orientation(thymio_theta)
     thymio.set_goal(goal_pos)
-
 
     # create and initialize the Kalman filter
     u = thymio.get_wheels_speed()
-    ekf = KalmanFilterExtended(np.array([thymio_pos_x, thymio_pos_y, thymio_theta]), u)
+    ekf = KalmanFilterExtended(np.array([thymio_pos_x * -1, thymio_pos_y, ((thymio_theta + 180) % 360) * np.pi / 180]), u)
+    camera = True
 
     # MAIN LOOP
     while not thymio.is_on_goal:
@@ -166,27 +205,50 @@ if __name__ == "__main__":
         corners = vision.get_corners_and_shape_edges(edges)             # We obtain shapes and corners by approxPolyDP
 
         frame_with_vectors, markers_data, marker_ids, _ = get_frame_with_vectors(vision, frame)
-        corners_mm = [np.array(shape) / conversion_factor for shape in corners]
         frame_aruco_and_corners = frame_with_vectors.copy()
 
         # Draw obstacles and path
         draw_obstacles(frame_aruco_and_corners, navigation, conversion_factor)
         draw_path(frame_aruco_and_corners, drawing_path, conversion_factor)
 
-        cv2.imshow("Main frame", frame_aruco_and_corners)
 
         ### Detection if camera is covered ###
         # We check if self.ARUCO_ROBOT_ID is in the detected markers
         camera_covered = vision.is_camera_covered(marker_ids)
         if camera_covered:
-            print("Thymio is being kidnapped")
-            thymio.kidnap()
-            continue
+            goal_pos = get_goal_position(markers_data)
+            if goal_pos is None:
+                print("Camera is covered!")
+                camera = False
+            else:
+                print("Thymio is being kidnapped (marker not detected)")
+                thymio.kidnap()
+                continue
+        else:
+            camera = True
 
-        # Kalman filter
 
         # THYMIO POSITION
-        thymio_pos_x, thymio_pos_y, thymio_theta = get_thymio_localisation(markers_data)
+        if camera:
+            thymio_pos_x, thymio_pos_y, thymio_theta = get_thymio_localisation(markers_data)
+        else:
+            thymio_pos_x, thymio_pos_y, thymio_theta = ekf.get_state()[:3]
+            thymio_pos_x = -thymio_pos_x
+
+
+        # KALMAN FILTER
+        u = thymio.get_wheels_speed()
+        theta = ((thymio_theta + 180) % 360) * np.pi / 180
+
+        measured_state, kidnap = run_EKF(ekf, thymio_pos_x * -1, thymio_pos_y, theta, u, cam=camera)
+
+        if not thymio.is_kidnapped and kidnap:
+            thymio.kidnap()
+
+        draw_ekf(frame_aruco_and_corners, measured_state, conversion_factor, ekf.get_cov()[:2, :2], thymio_theta)
+
+        # out.write(frame_aruco_and_corners)
+        cv2.imshow("Main frame", cv2.resize(frame_aruco_and_corners, (1920//2, 1080//2)))
 
         # ACCOUNT FOR KIDNAPPING
         if thymio.is_kidnapped:
@@ -196,10 +258,17 @@ if __name__ == "__main__":
             drawing_path = deepcopy(global_path)
             check_num = 0
 
-        thymio_theta = (thymio_theta + 180) % 360
-        thymio_pos_x = -thymio_pos_x
-        thymio.set_position(np.array([thymio_pos_x, thymio_pos_y]))
-        thymio.set_orientation(thymio_theta * np.pi / 180)
+            u = thymio.get_wheels_speed()
+            ekf = KalmanFilterExtended(np.array([thymio_pos_x * -1, thymio_pos_y, ((thymio_theta + 180) % 360) * np.pi / 180]), u)
+
+        if camera:
+            thymio_theta = ((thymio_theta + 180) % 360) * np.pi / 180
+            thymio_pos_x = -thymio_pos_x
+            thymio.set_position(np.array([thymio_pos_x, thymio_pos_y]))
+            thymio.set_orientation(thymio_theta)
+        else:
+            thymio.set_position(np.array([measured_state[0], measured_state[1]]))
+            thymio.set_orientation(measured_state[2])
 
         # MOVEMENT
         target = global_path[0]
@@ -209,9 +278,11 @@ if __name__ == "__main__":
             global_path.pop(0)
 
         if cv2.waitKey(1) & 0xFF == ord('q'):
+            thymio.stop()
             break
 
     vision.release()
+    # out.release()
     thymio.stop()
     thymio.__del__()
     print("Goal reached")

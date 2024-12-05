@@ -20,30 +20,26 @@ class Thymio():
     LEDS_PROX_H = "leds.prox.h"
     LEDS_PROX_V = "leds.prox.v"
 
-    GOAL_THRESHOLD = 10
+    GOAL_THRESHOLD = 20
     OBSTACLE_THRESHOLD = 1800
     SCALE = 0.03
-    SPEED = 50
+    SPEED = 70
 
-    W = np.array([[2, 1, -3, -1, -2], [-2, -1, -3, 1, 2]]) * SCALE
-
-    goal = None
-    position = None
-    orientation = None
-    is_on_goal = False
-    is_kidnapped = False
-
-    K_RHO = 2
-    K_ALPHA = 300
-    K_BETA = -0.001
-    WHEELBASE = 0.09
+    W = np.array([[2, 1, -4, -1, -2], [-2, -1, -2, 1, 2]]) * SCALE
 
     ANGLE_THRESHOLD = 0.01
+    SHARP_TURN_THRESHOLD = np.pi / 6
 
     def __init__(self):
         self.client = ClientAsync()
         self.node = aw(self.client.wait_for_node())
         aw(self.node.lock())
+
+        self.goal = None
+        self.position = None
+        self.orientation = None
+        self.is_on_goal = False
+        self.is_kidnapped = False
 
     def __del__(self):
         aw(self.node.unlock())
@@ -138,6 +134,8 @@ class Thymio():
 
             self.set_motors(left_motor, right_motor)
 
+        time.sleep(0.2)
+
     def stop(self):
         """
         Stops the Thymio
@@ -156,7 +154,6 @@ class Thymio():
         Recovers the Thymio from kidnapping
         """
         self.is_kidnapped = False
-        self.stop()
 
     def set_goal(self, goal):
         """
@@ -208,58 +205,21 @@ class Thymio():
             print("Target: ", target)
 
         if angle > self.ANGLE_THRESHOLD:
-            self.set_motors(self.SPEED, -self.SPEED)
+            if angle > self.SHARP_TURN_THRESHOLD:
+                self.set_motors(self.SPEED, -self.SPEED)
+                time.sleep(0.5)
+            else:
+                self.set_motors(self.SPEED, -self.SPEED)
         elif angle < -self.ANGLE_THRESHOLD:
-            self.set_motors(-self.SPEED, self.SPEED)
+            if angle < -self.SHARP_TURN_THRESHOLD:
+                self.set_motors(-self.SPEED, self.SPEED)
+                time.sleep(0.5)
+            else:
+                self.set_motors(-self.SPEED, self.SPEED)
 
         self.set_motors(self.SPEED, self.SPEED)
 
         return False
-
-    def move_to_point_astolfi(self, target: np.ndarray, verbose: bool = False):
-        """
-        Move the Thymio towards the goal depending on the position and the next target
-        :param target: next target position
-        """
-        # self.position[1] = -self.position[1]
-        # target[1] = -target[1]
-
-        d = target - self.position
-        rho = np.sqrt(np.sum(np.square(d)))
-
-        if rho <= self.GOAL_THRESHOLD:
-            self.is_on_goal = True
-            return
-
-        if verbose:
-            print("Orientation: ", self.orientation)
-            print("Rho: ", rho)
-            print("Dy: ", d[1])
-            print("Dx: ", d[0])
-            print("Target: ", target)
-            print("Position: ", self.position)
-
-        alpha = -self.orientation + np.arctan2(d[1], d[0])
-        beta = -self.orientation - alpha
-
-        # if verbose:
-        #     print("Alpha: ", alpha)
-
-        v = self.K_RHO * rho
-        w = (self.K_ALPHA * alpha + self.K_BETA * beta)
-
-        if verbose:
-            print("V: ", v)
-            print("W: ", w)
-
-        left_motor = v - w
-        right_motor = v + w
-
-        if verbose:
-            print("Left motor: ", left_motor)
-            print("Right motor: ", right_motor)
-
-        self.set_motors(int(np.floor(left_motor * 0.1)), int(np.floor(right_motor * 0.1)))
 
     def plot_direction(self, goal):
         """
