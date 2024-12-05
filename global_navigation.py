@@ -8,6 +8,12 @@ THYMIO_RADIUS = 70 # mm
 # Navigation class
 class Navigation:
     def __init__(self, obstacles, robot, goal):
+        """
+        :param obstacles: A list of all the obstacles on the map. An obstacle is a list of 
+                            vertices, ordered CCW.
+        :param robot: The position of the robot.
+        :param goal: The position of the goal.
+        """
         self.obstacles = obstacles
         self.obstacles_count = len(obstacles)
         self.extended_obstacles = []
